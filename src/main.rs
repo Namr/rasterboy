@@ -2,6 +2,9 @@ use std::fs::File;
 use std::path::Path;
 use std::io::prelude::*;
 
+mod math;
+mod test;
+
 static IMAGE_WIDTH: i32 = 1920;
 static IMAGE_HEIGHT: i32 = 1080;
 static OUTER_CIRCLE_RADIUS: i32 = 500;
@@ -10,6 +13,10 @@ static CENTER_X: i32 =  IMAGE_WIDTH / 2;
 static CENTER_Y: i32 =  IMAGE_HEIGHT / 2;
 
 fn main() {
+    
+    ///////////////////////////////////////////////////
+    // Create a PPM file to contain our image output //
+    //////////////////////////////////////////////////
     let path = Path::new("output.ppm");
     let display = path.display();
     
@@ -25,6 +32,9 @@ fn main() {
         Ok(_) => (),
     }
     
+    ////////////////////////////////////////////////
+    // Compute and commit the color of each pixel //
+    ///////////////////////////////////////////////
     for y in 0..1080 {
         for x in 0..1920 {
             let square = i32::pow(x - CENTER_X, 2) + i32::pow(y - CENTER_Y, 2);
