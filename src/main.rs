@@ -6,6 +6,8 @@ use std::path::Path;
 
 mod math;
 mod mesh;
+
+#[cfg(test)]
 mod test;
 
 use math::*;
@@ -22,7 +24,7 @@ fn main() {
     ///////////////////////////////////////////////////
     // Load scene from disk
     ///////////////////////////////////////////////////
-    let teapot = Mesh::from_obj_file(Path::new("data/teapot.obj"));
+    let teapot = Mesh::from_obj_file(Path::new("data/teapot.obj")).expect("Couldn't load obj file");
     let light = Vector3 {
         x: 20.0,
         y: -10.0,
@@ -40,7 +42,7 @@ fn main() {
     let path = Path::new("output.ppm");
     let display = path.display();
 
-    let mut output_file = match File::create(&path) {
+    let mut output_file = match File::create(path) {
         Err(why) => panic!("Couldn't create output file {}: {}", display, why),
         Ok(file) => file,
     };

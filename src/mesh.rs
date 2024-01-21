@@ -2,6 +2,7 @@ use crate::math::*;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::path::Path;
+use std::error::Error;
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Triangle {
@@ -17,42 +18,31 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn from_obj_file(path: &Path) -> Mesh {
-        let path_display = path.display();
-        let obj_file = match File::open(path) {
-            Err(why) => panic!("Couldn't open obj file {path_display}: {why}"),
-            Ok(file) => file,
-        };
-
+    pub fn from_obj_file(path: &Path) -> Result<Mesh, Box<dyn Error>> {
+        let obj_file = File::open(path)?;
         let mut ret = Mesh::default();
 
         // read line by line, insert all verts into ret
         let obj_reader = BufReader::new(obj_file);
         for maybe_line in obj_reader.lines() {
-            let line = match maybe_line {
-                Err(why) => panic!("Couldn't read line from obj file {path_display}: {why}"),
-                Ok(line) => line,
-            };
+            let line = maybe_line?;
 
             let split_line: Vec<&str> = line.split_whitespace().collect();
             if split_line.len() != 4 {
                 continue;
             }
 
-            let parse_panic_msg = format!(
-                "could not parse numbers from following line {line} in obj file {path_display}"
-            );
             match split_line[0] {
                 "v" => {
-                    let x = split_line[1].parse::<f32>().expect(&parse_panic_msg);
-                    let y = split_line[2].parse::<f32>().expect(&parse_panic_msg);
-                    let z = split_line[3].parse::<f32>().expect(&parse_panic_msg);
+                    let x = split_line[1].parse::<f32>()?;
+                    let y = split_line[2].parse::<f32>()?;
+                    let z = split_line[3].parse::<f32>()?;
                     ret.verticies.push(Vector3 { x, y, z });
                 }
                 "f" => {
-                    let a = split_line[1].parse::<usize>().expect(&parse_panic_msg);
-                    let b = split_line[2].parse::<usize>().expect(&parse_panic_msg);
-                    let c = split_line[3].parse::<usize>().expect(&parse_panic_msg);
+                    let a = split_line[1].parse::<usize>()?;
+                    let b = split_line[2].parse::<usize>()?;
+                    let c = split_line[3].parse::<usize>()?;
                     ret.face_indicies.push(Triangle {
                         a: a - 1,
                         b: b - 1,
@@ -62,7 +52,6 @@ impl Mesh {
                 _ => continue,
             }
         }
-
-        ret
+        Ok(ret)
     }
 }
