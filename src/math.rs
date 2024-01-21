@@ -1,15 +1,28 @@
 use std::ops;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Mat4 {
     pub data: [f32; 16],
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Vector3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct ScreenCoordinate {
+    pub x: i32,
+    pub y: i32,
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct Pixel {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 impl Mat4 {
@@ -59,6 +72,16 @@ impl Mat4 {
         ret
     }
 
+    pub fn perspective(aspect_ratio: f32, fov: f32, near_plane: f32, far_plane: f32) -> Mat4 {
+        let mut ret = Mat4 { data: [0.0; 16] };
+        ret.data[0] = 1.0 / (aspect_ratio * (fov / 2.0).tan());
+        ret.data[(1 * 4) + 1] = 1.0 / (fov / 2.0).tan();
+        ret.data[(2 * 4) + 2] = -1.0 * (far_plane + near_plane) / (far_plane - near_plane);
+        ret.data[(2 * 4) + 3] = (-2.0 * far_plane * near_plane) / (far_plane - near_plane);
+        ret.data[(3 * 4) + 2] = -1.0;
+        ret
+    }
+
     pub fn translation_part(&self) -> Vector3 {
         Vector3 {
             x: self.data[(3 * 4) + 0],
@@ -74,6 +97,13 @@ impl Vector3 {
         y: 0.0,
         z: 0.0,
     };
+
+    pub fn ndc_to_pixel(&self, screen_width: i32, screen_height: i32) -> ScreenCoordinate {
+        ScreenCoordinate {
+            x: ((self.x + 1.0) * 0.5 * (screen_width as f32)) as i32,
+            y: ((1.0 - self.y) * 0.5 * (screen_height as f32)) as i32,
+        }
+    }
 }
 
 // TODO: the operator overloads here copy the entire mat, which seems super expensive

@@ -12,8 +12,8 @@ pub struct Triangle {
 
 #[derive(Debug, Default)]
 pub struct Mesh {
-    verticies: Vec<Vector3>,
-    face_indicies: Vec<Triangle>,
+    pub verticies: Vec<Vector3>,
+    pub face_indicies: Vec<Triangle>,
 }
 
 impl Mesh {
