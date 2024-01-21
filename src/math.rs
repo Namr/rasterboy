@@ -107,9 +107,9 @@ impl Vector3 {
 
     pub fn to_color(&self) -> Color {
         Color {
-            r: (self.x.clamp(0.0, 1.0) * 255.0) as u8,
-            g: (self.y.clamp(0.0, 1.0) * 255.0) as u8,
-            b: (self.z.clamp(0.0, 1.0) * 255.0) as u8,
+            r: (self.x.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
+            g: (self.y.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
+            b: (self.z.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
         }
     }
 

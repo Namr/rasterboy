@@ -15,23 +15,23 @@ const IMAGE_WIDTH: i32 = 1920;
 const IMAGE_HEIGHT: i32 = 1080;
 const NUM_PIXELS: usize = (IMAGE_WIDTH * IMAGE_HEIGHT) as usize;
 const NEAR: f32 = 0.1;
-const FAR: f32 = 150.0;
-const AMBIENT_STRENGTH: f32 = 0.1;
+const FAR: f32 = 100.0;
+const AMBIENT_STRENGTH: f32 = 0.3;
 
 fn main() {
     ///////////////////////////////////////////////////
     // Load scene from disk
     ///////////////////////////////////////////////////
-    let teapot = Mesh::from_obj_file(Path::new("data/bunny.obj"));
+    let teapot = Mesh::from_obj_file(Path::new("data/teapot.obj"));
     let light = Vector3 {
-        x: 0.0,
-        y: 1.0,
-        z: 3.0,
+        x: 20.0,
+        y: -10.0,
+        z: 2.0,
     };
     let light_color = Vector3 {
-        x: 1.0,
-        y: 1.0,
-        z: 1.0,
+        x: 0.8,
+        y: 0.8,
+        z: 0.8,
     };
 
     ///////////////////////////////////////////////////
@@ -55,7 +55,7 @@ fn main() {
     let mut pixel_buffer = vec![Color::default(); NUM_PIXELS];
     let mut depth_buffer = vec![f32::MAX; NUM_PIXELS];
 
-    let model_mat = Mat4::euler_angles(0.0, 1.3, 0.0) * Mat4::translation(0.0, -0.0, -1.4);
+    let model_mat = Mat4::euler_angles(0.0, 0.4, 0.0) * Mat4::translation(0.0, -1.5, -30.0);
     let projection_mat = Mat4::perspective(
         IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32,
         54_f32.to_radians(),
@@ -64,51 +64,71 @@ fn main() {
     );
 
     for t in teapot.face_indicies {
-        let v0 = model_mat * projection_mat * teapot.verticies[t.a];
-        let v1 = model_mat * projection_mat * teapot.verticies[t.b];
-        let v2 = model_mat * projection_mat * teapot.verticies[t.c];
+        let world_to_v0 = model_mat * teapot.verticies[t.a];
+        let world_to_v1 = model_mat * teapot.verticies[t.b];
+        let world_to_v2 = model_mat * teapot.verticies[t.c];
 
-        let normal = Vector3::cross(&(v2 - v0), &(v1 - v0)).normalized();
+        let mut ndc_v0 = projection_mat * world_to_v0;
+        let mut ndc_v1 = projection_mat * world_to_v1;
+        let mut ndc_v2 = projection_mat * world_to_v2;
 
-        // if any points are on screen, lets rasterize
-        if normal.z >= 0.0
-            && (is_on_screen(&v0, NEAR, FAR)
-                || is_on_screen(&v1, NEAR, FAR)
-                || is_on_screen(&v2, NEAR, FAR))
+        let normal =
+            Vector3::cross(&(world_to_v2 - world_to_v0), &(world_to_v1 - world_to_v0)).normalized();
+
+        // if any points are on screen, lets rasterize, we also perform back-face culling here
+        if Vector3::dot(&world_to_v0, &normal) <= 0.0
+            && (is_on_screen(&ndc_v0, NEAR, FAR)
+                || is_on_screen(&ndc_v1, NEAR, FAR)
+                || is_on_screen(&ndc_v2, NEAR, FAR))
         {
-            // compute color of each vertex
-            let ambient = light_color * AMBIENT_STRENGTH;
-            let c0 = (light_color
-                * f32::max(Vector3::dot(&normal, &((light - v0).normalized())), 0.0))
-                + ambient;
-            let c1 = (light_color
-                * f32::max(Vector3::dot(&normal, &((light - v1).normalized())), 0.0))
-                + ambient;
-            let c2 = (light_color
-                * f32::max(Vector3::dot(&normal, &((light - v2).normalized())), 0.0))
-                + ambient;
-
             // screen coords
-            let v0_s = v0.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
-            let v1_s = v1.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
-            let v2_s = v2.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
-            let area = triangle_edge(&v1_s, &v2_s, &v0_s);
+            let pixel_v0 = ndc_v0.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
+            let pixel_v1 = ndc_v1.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
+            let pixel_v2 = ndc_v2.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
+
+            // pre-compute inverse depth before loop
+            ndc_v0.z = 1.0 / ndc_v0.z;
+            ndc_v1.z = 1.0 / ndc_v1.z;
+            ndc_v2.z = 1.0 / ndc_v2.z;
+
+            // compute color of each vertex
+            // calc direction to light source
+            let v0_to_light = (light - world_to_v0).normalized();
+            let v1_to_light = (light - world_to_v1).normalized();
+            let v2_to_light = (light - world_to_v2).normalized();
+
+            let ambient = light_color * AMBIENT_STRENGTH;
+            let c0 = (light_color * f32::max(Vector3::dot(&normal, &v0_to_light), 0.0)) + ambient;
+            let c1 = (light_color * f32::max(Vector3::dot(&normal, &v1_to_light), 0.0)) + ambient;
+            let c2 = (light_color * f32::max(Vector3::dot(&normal, &v2_to_light), 0.0)) + ambient;
+
+            let area = triangle_edge(&pixel_v2, &pixel_v0, &pixel_v1);
 
             // axis aligned bounding box of triangle (clipped to match screen)
-            let x_start = max(min(min(v0_s.x, v1_s.x), v2_s.x), 0);
-            let x_end = min(max(max(v0_s.x, v1_s.x), v2_s.x), IMAGE_WIDTH);
-            let y_start = max(min(min(v0_s.y, v1_s.y), v2_s.y), 0);
-            let y_end = min(max(max(v0_s.y, v1_s.y), v2_s.y), IMAGE_HEIGHT);
+            let x_start = max(min(min(pixel_v0.x, pixel_v1.x), pixel_v2.x), 0);
+            let x_end = min(max(max(pixel_v0.x, pixel_v1.x), pixel_v2.x), IMAGE_WIDTH);
+            let y_start = max(min(min(pixel_v0.y, pixel_v1.y), pixel_v2.y), 0);
+            let y_end = min(max(max(pixel_v0.y, pixel_v1.y), pixel_v2.y), IMAGE_HEIGHT);
 
             for x in x_start..x_end {
                 for y in y_start..y_end {
                     let current_pixel = ScreenCoordinate { x, y };
-                    let mut w0 = triangle_edge(&current_pixel, &v0_s, &v1_s);
-                    let mut w1 = triangle_edge(&current_pixel, &v1_s, &v2_s);
-                    let mut w2 = triangle_edge(&current_pixel, &v2_s, &v0_s);
+                    let mut w0 = triangle_edge(&current_pixel, &pixel_v1, &pixel_v2);
+                    let mut w1 = triangle_edge(&current_pixel, &pixel_v2, &pixel_v0);
+                    let mut w2 = triangle_edge(&current_pixel, &pixel_v0, &pixel_v1);
 
-                    // are we inside of a triangle?
-                    if w0 >= 0.0 && w1 >= 0.0 && w2 >= 0.0 {
+                    let edge0 = ndc_v2 - ndc_v1;
+                    let edge1 = ndc_v0 - ndc_v2;
+                    let edge2 = ndc_v1 - ndc_v0;
+
+                    // are we inside of a triangle? (also does a top left edge rule check)
+                    if ((w0 == 0.0 && ((edge0.y == 0.0 && edge0.x > 0.0) || edge0.y > 0.0))
+                        || w0 >= 0.0)
+                        && ((w1 == 0.0 && ((edge1.y == 0.0 && edge1.x > 0.0) || edge1.y > 0.0))
+                            || w1 >= 0.0)
+                        && ((w2 == 0.0 && ((edge2.y == 0.0 && edge2.x > 0.0) || edge2.y > 0.0))
+                            || w2 >= 0.0)
+                    {
                         let buff_idx = ((y * IMAGE_WIDTH) + x) as usize;
                         w0 /= area;
                         w1 /= area;
@@ -116,7 +136,7 @@ fn main() {
 
                         // (note: amoussa) this is a very unintuitive formula I recommend reading about
                         // it here: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/visibility-problem-depth-buffer-depth-interpolation.html
-                        let depth = 1.0 / (v0.z * w0 + v1.z * w1 + v2.z + w2);
+                        let depth = ndc_v0.z * w0 + ndc_v1.z * w1 + ndc_v2.z * w2;
 
                         // depth test
                         if depth < depth_buffer[buff_idx] {
@@ -164,8 +184,8 @@ pub fn triangle_edge(
 pub fn is_on_screen(point: &Vector3, near: f32, far: f32) -> bool {
     return point.z > near
         && point.z < far
-        && point.x > -1.0
-        && point.x < 1.0
-        && point.y > -1.0
-        && point.y < 1.0;
+        && point.x >= -1.0
+        && point.x <= 1.0
+        && point.y >= -1.0
+        && point.y <= 1.0;
 }
