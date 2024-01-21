@@ -73,13 +73,13 @@ fn main() {
         let mut ndc_v2 = projection_mat * world_to_v2;
 
         let normal =
-            Vector3::cross(&(world_to_v2 - world_to_v0), &(world_to_v1 - world_to_v0)).normalized();
+            Vector3::cross(world_to_v2 - world_to_v0, world_to_v1 - world_to_v0).normalized();
 
         // if any points are on screen, lets rasterize, we also perform back-face culling here
-        if Vector3::dot(&world_to_v0, &normal) <= 0.0
-            && (is_on_screen(&ndc_v0, NEAR, FAR)
-                || is_on_screen(&ndc_v1, NEAR, FAR)
-                || is_on_screen(&ndc_v2, NEAR, FAR))
+        if Vector3::dot(world_to_v0, normal) <= 0.0
+            && (is_on_screen(ndc_v0, NEAR, FAR)
+                || is_on_screen(ndc_v1, NEAR, FAR)
+                || is_on_screen(ndc_v2, NEAR, FAR))
         {
             // screen coords
             let pixel_v0 = ndc_v0.ndc_to_pixel(IMAGE_WIDTH, IMAGE_HEIGHT);
@@ -98,11 +98,11 @@ fn main() {
             let v2_to_light = (light - world_to_v2).normalized();
 
             let ambient = light_color * AMBIENT_STRENGTH;
-            let c0 = (light_color * f32::max(Vector3::dot(&normal, &v0_to_light), 0.0)) + ambient;
-            let c1 = (light_color * f32::max(Vector3::dot(&normal, &v1_to_light), 0.0)) + ambient;
-            let c2 = (light_color * f32::max(Vector3::dot(&normal, &v2_to_light), 0.0)) + ambient;
+            let c0 = (light_color * f32::max(Vector3::dot(normal, v0_to_light), 0.0)) + ambient;
+            let c1 = (light_color * f32::max(Vector3::dot(normal, v1_to_light), 0.0)) + ambient;
+            let c2 = (light_color * f32::max(Vector3::dot(normal, v2_to_light), 0.0)) + ambient;
 
-            let area = triangle_edge(&pixel_v2, &pixel_v0, &pixel_v1);
+            let area = triangle_edge(pixel_v2, pixel_v0, pixel_v1);
 
             // axis aligned bounding box of triangle (clipped to match screen)
             let x_start = max(min(min(pixel_v0.x, pixel_v1.x), pixel_v2.x), 0);
@@ -113,9 +113,9 @@ fn main() {
             for x in x_start..x_end {
                 for y in y_start..y_end {
                     let current_pixel = ScreenCoordinate { x, y };
-                    let mut w0 = triangle_edge(&current_pixel, &pixel_v1, &pixel_v2);
-                    let mut w1 = triangle_edge(&current_pixel, &pixel_v2, &pixel_v0);
-                    let mut w2 = triangle_edge(&current_pixel, &pixel_v0, &pixel_v1);
+                    let mut w0 = triangle_edge(current_pixel, pixel_v1, pixel_v2);
+                    let mut w1 = triangle_edge(current_pixel, pixel_v2, pixel_v0);
+                    let mut w2 = triangle_edge(current_pixel, pixel_v0, pixel_v1);
 
                     let edge0 = ndc_v2 - ndc_v1;
                     let edge1 = ndc_v0 - ndc_v2;
@@ -170,18 +170,14 @@ fn main() {
  * This function determines which side of the line defined by v0 and v1 the the given point is on.
  * returns true if left of the line. v0 and v1 are intended to be provided in counter-clockwise order.
  */
-pub fn triangle_edge(
-    point: &ScreenCoordinate,
-    v0: &ScreenCoordinate,
-    v1: &ScreenCoordinate,
-) -> f32 {
+pub fn triangle_edge(point: ScreenCoordinate, v0: ScreenCoordinate, v1: ScreenCoordinate) -> f32 {
     ((point.x - v0.x) * (v0.y - v1.y) - (point.y - v0.y) * (v0.x - v1.x)) as f32
 }
 
 /*
  * Expects an NDC vertex
  */
-pub fn is_on_screen(point: &Vector3, near: f32, far: f32) -> bool {
+pub fn is_on_screen(point: Vector3, near: f32, far: f32) -> bool {
     point.z > near
         && point.z < far
         && point.x >= -1.0
