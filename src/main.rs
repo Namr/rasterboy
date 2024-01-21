@@ -175,17 +175,17 @@ pub fn triangle_edge(
     v0: &ScreenCoordinate,
     v1: &ScreenCoordinate,
 ) -> f32 {
-    return ((point.x - v0.x) * (v0.y - v1.y) - (point.y - v0.y) * (v0.x - v1.x)) as f32;
+    ((point.x - v0.x) * (v0.y - v1.y) - (point.y - v0.y) * (v0.x - v1.x)) as f32
 }
 
 /*
  * Expects an NDC vertex
  */
 pub fn is_on_screen(point: &Vector3, near: f32, far: f32) -> bool {
-    return point.z > near
+    point.z > near
         && point.z < far
         && point.x >= -1.0
         && point.x <= 1.0
         && point.y >= -1.0
-        && point.y <= 1.0;
+        && point.y <= 1.0
 }
