@@ -82,7 +82,7 @@ impl Mat4 {
         ret
     }
 
-    pub fn translation_part(&self) -> Vector3 {
+    pub fn translation_part(self) -> Vector3 {
         Vector3 {
             x: self.data[(3 * 4) + 0],
             y: self.data[(3 * 4) + 1],
@@ -98,14 +98,14 @@ impl Vector3 {
         z: 0.0,
     };
 
-    pub fn ndc_to_pixel(&self, screen_width: i32, screen_height: i32) -> ScreenCoordinate {
+    pub fn ndc_to_pixel(self, screen_width: i32, screen_height: i32) -> ScreenCoordinate {
         ScreenCoordinate {
             x: ((self.x + 1.0) * 0.5 * (screen_width as f32)) as i32,
             y: ((1.0 - self.y) * 0.5 * (screen_height as f32)) as i32,
         }
     }
 
-    pub fn to_color(&self) -> Color {
+    pub fn to_color(self) -> Color {
         Color {
             r: (self.x.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
             g: (self.y.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
@@ -113,11 +113,11 @@ impl Vector3 {
         }
     }
 
-    pub fn magnitude(&self) -> f32 {
+    pub fn magnitude(self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
-    pub fn normalized(&self) -> Vector3 {
+    pub fn normalized(self) -> Vector3 {
         let mag = self.magnitude();
         Vector3 {
             x: self.x / mag,
