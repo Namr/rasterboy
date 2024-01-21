@@ -19,7 +19,7 @@ pub struct ScreenCoordinate {
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
-pub struct Pixel {
+pub struct Color {
     pub r: u8,
     pub g: u8,
     pub b: u8,
@@ -103,6 +103,39 @@ impl Vector3 {
             x: ((self.x + 1.0) * 0.5 * (screen_width as f32)) as i32,
             y: ((1.0 - self.y) * 0.5 * (screen_height as f32)) as i32,
         }
+    }
+
+    pub fn to_color(&self) -> Color {
+        Color {
+            r: (self.x.clamp(0.0, 1.0) * 255.0) as u8,
+            g: (self.y.clamp(0.0, 1.0) * 255.0) as u8,
+            b: (self.z.clamp(0.0, 1.0) * 255.0) as u8,
+        }
+    }
+
+    pub fn magnitude(&self) -> f32 {
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+    }
+
+    pub fn normalized(&self) -> Vector3 {
+        let mag = self.magnitude();
+        Vector3 {
+            x: self.x / mag,
+            y: self.y / mag,
+            z: self.z / mag,
+        }
+    }
+
+    pub fn cross(a: &Vector3, b: &Vector3) -> Vector3 {
+        Vector3 {
+            x: a.y * b.z - a.z * b.y,
+            y: a.z * b.x - a.x * b.z,
+            z: a.x * b.y - a.y * b.x,
+        }
+    }
+
+    pub fn dot(a: &Vector3, b: &Vector3) -> f32 {
+        a.x * b.x + a.y * b.y + a.z * b.z
     }
 }
 

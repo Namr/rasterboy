@@ -5,9 +5,9 @@ use std::path::Path;
 
 #[derive(Debug, Default)]
 pub struct Triangle {
-    a: usize,
-    b: usize,
-    c: usize,
+    pub a: usize,
+    pub b: usize,
+    pub c: usize,
 }
 
 #[derive(Debug, Default)]
@@ -77,7 +77,11 @@ impl Mesh {
                         .unwrap()
                         .parse::<usize>()
                         .expect(&parse_panic_msg);
-                    ret.face_indicies.push(Triangle { a, b, c });
+                    ret.face_indicies.push(Triangle {
+                        a: a - 1,
+                        b: b - 1,
+                        c: c - 1,
+                    });
                 }
                 _ => continue,
             }
