@@ -107,9 +107,9 @@ impl Vector3 {
 
     pub fn to_color(self) -> Color {
         Color {
-            r: (self.x.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
-            g: (self.y.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
-            b: (self.z.clamp(0.0, 1.0).sqrt() * 255.0) as u8,
+            r: (self.x.clamp(0.0, 1.0) * 255.0) as u8,
+            g: (self.y.clamp(0.0, 1.0) * 255.0) as u8,
+            b: (self.z.clamp(0.0, 1.0) * 255.0) as u8,
         }
     }
 
@@ -207,6 +207,28 @@ impl ops::Mul<f32> for Vector3 {
             x: self.x * rhs,
             y: self.y * rhs,
             z: self.z * rhs,
+        }
+    }
+}
+
+impl Color {
+    pub const WHITE: Color = Color {
+        r: 255,
+        g: 255,
+        b: 255,
+    };
+
+    pub const RED: Color = Color { r: 255, g: 0, b: 0 };
+
+    pub const GREEN: Color = Color { r: 0, g: 255, b: 0 };
+
+    pub const BLUE: Color = Color { r: 0, g: 0, b: 255 };
+
+    pub fn to_vector3(self) -> Vector3 {
+        Vector3 {
+            x: self.r as f32 / 255.0,
+            y: self.g as f32 / 255.0,
+            z: self.b as f32 / 255.0,
         }
     }
 }

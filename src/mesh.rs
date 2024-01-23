@@ -1,8 +1,9 @@
 use crate::math::*;
+use std::collections::HashMap;
+use std::error::Error;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::path::Path;
-use std::error::Error;
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Triangle {
@@ -15,12 +16,15 @@ pub struct Triangle {
 pub struct Mesh {
     pub verticies: Vec<Vector3>,
     pub face_indicies: Vec<Triangle>,
+    pub vertex_normals: Vec<Vector3>,
 }
 
 impl Mesh {
     pub fn from_obj_file(path: &Path) -> Result<Mesh, Box<dyn Error>> {
         let obj_file = File::open(path)?;
         let mut ret = Mesh::default();
+
+        let mut triangle_to_faces: HashMap<usize, Vec<usize>> = HashMap::new();
 
         // read line by line, insert all verts into ret
         let obj_reader = BufReader::new(obj_file);
@@ -48,9 +52,37 @@ impl Mesh {
                         b: b - 1,
                         c: c - 1,
                     });
+
+                    let face_index = ret.face_indicies.len() - 1;
+
+                    for t in [a, b, c] {
+                        let triangle_index = t - 1;
+                        match triangle_to_faces.get_mut(&triangle_index) {
+                            Some(face_list) => face_list.push(face_index),
+                            _ => drop(triangle_to_faces.insert(triangle_index, vec![face_index])),
+                        }
+                    }
                 }
                 _ => continue,
             }
+        }
+
+        // TODO: read in normals and only do this step if its actually needed
+        // compute normals
+        ret.vertex_normals = vec![Vector3::default(); ret.verticies.len()];
+        for (triangle_idx, face_idx_list) in triangle_to_faces.into_iter() {
+            // compute, sum, and then normalize the normals of every face that this vertex
+            // contributes to
+            ret.vertex_normals[triangle_idx] = face_idx_list
+                .into_iter()
+                .map(|face_idx| {
+                    let v0 = ret.verticies[ret.face_indicies[face_idx].a];
+                    let v1 = ret.verticies[ret.face_indicies[face_idx].b];
+                    let v2 = ret.verticies[ret.face_indicies[face_idx].c];
+                    Vector3::cross(v2 - v0, v1 - v0).normalized()
+                })
+                .fold(Vector3::default(), |acc, norm| acc + norm)
+                .normalized();
         }
         Ok(ret)
     }
