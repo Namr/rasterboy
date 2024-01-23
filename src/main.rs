@@ -32,12 +32,12 @@ fn main() {
         position: Vector3 {
             x: 20.0,
             y: -10.0,
-            z: 2.0,
+            z: 0.0,
         },
         color: Color {
-            r: 230,
-            g: 230,
-            b: 230,
+            r: 200,
+            g: 200,
+            b: 200,
         },
         ambient_strength: 0.3,
     };
@@ -45,7 +45,7 @@ fn main() {
     let light2 = Light {
         position: Vector3 {
             x: -20.0,
-            y: 10.0,
+            y: 0.0,
             z: 2.0,
         },
         color: Color { r: 50, g: 0, b: 0 },
@@ -77,7 +77,7 @@ fn main() {
     let mut depth_buffer = vec![f32::MAX; NUM_PIXELS];
 
     let model_mat = Mat4::euler_angles(0.0, 0.4, 0.0) * Mat4::translation(0.0, -3.0, -40.0);
-    let model_mat2 = Mat4::euler_angles(1.0, 0.4, 0.0) * Mat4::translation(0.0, 1.6, -40.0);
+    let model_mat2 = Mat4::euler_angles(3.14, -0.4, 0.0) * Mat4::translation(0.0, 3.0, -40.0);
 
     draw_mesh(
         &teapot,

@@ -13,14 +13,19 @@ pub fn draw_mesh(
     pixel_buffer: &mut [Color],
     depth_buffer: &mut [f32],
 ) {
+    let inverse_transform = match transform.inverse() {
+        Some(inverse) => Mat3::from(inverse.transpose()),
+        None => Mat3::default(),
+    };
+
     for t in &mesh.face_indicies {
         let world_to_v0 = transform * mesh.verticies[t.a];
         let world_to_v1 = transform * mesh.verticies[t.b];
         let world_to_v2 = transform * mesh.verticies[t.c];
 
-        let v0_normal = mesh.vertex_normals[t.a];
-        let v1_normal = mesh.vertex_normals[t.b];
-        let v2_normal = mesh.vertex_normals[t.c];
+        let v0_normal = (inverse_transform * mesh.vertex_normals[t.a]).normalized();
+        let v1_normal = (inverse_transform * mesh.vertex_normals[t.b]).normalized();
+        let v2_normal = (inverse_transform * mesh.vertex_normals[t.c]).normalized();
 
         let mut ndc_v0 = camera.projection_mat * camera.view_mat * world_to_v0;
         let mut ndc_v1 = camera.projection_mat * camera.view_mat * world_to_v1;

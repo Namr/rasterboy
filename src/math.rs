@@ -6,6 +6,11 @@ pub struct Mat4 {
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct Mat3 {
+    pub data: [f32; 9],
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Vector3 {
     pub x: f32,
     pub y: f32,
@@ -88,6 +93,150 @@ impl Mat4 {
             y: self.data[(3 * 4) + 1],
             z: self.data[(3 * 4) + 2],
         }
+    }
+
+    // (note: amoussa) this was uh "adapted" from GLU :)
+    pub fn inverse(self) -> Option<Mat4> {
+        let mut ret = Mat4::default();
+
+        ret.data[0] = self.data[5] * self.data[10] * self.data[15]
+            - self.data[5] * self.data[11] * self.data[14]
+            - self.data[9] * self.data[6] * self.data[15]
+            + self.data[9] * self.data[7] * self.data[14]
+            + self.data[13] * self.data[6] * self.data[11]
+            - self.data[13] * self.data[7] * self.data[10];
+
+        ret.data[4] = -self.data[4] * self.data[10] * self.data[15]
+            + self.data[4] * self.data[11] * self.data[14]
+            + self.data[8] * self.data[6] * self.data[15]
+            - self.data[8] * self.data[7] * self.data[14]
+            - self.data[12] * self.data[6] * self.data[11]
+            + self.data[12] * self.data[7] * self.data[10];
+
+        ret.data[8] = self.data[4] * self.data[9] * self.data[15]
+            - self.data[4] * self.data[11] * self.data[13]
+            - self.data[8] * self.data[5] * self.data[15]
+            + self.data[8] * self.data[7] * self.data[13]
+            + self.data[12] * self.data[5] * self.data[11]
+            - self.data[12] * self.data[7] * self.data[9];
+
+        ret.data[12] = -self.data[4] * self.data[9] * self.data[14]
+            + self.data[4] * self.data[10] * self.data[13]
+            + self.data[8] * self.data[5] * self.data[14]
+            - self.data[8] * self.data[6] * self.data[13]
+            - self.data[12] * self.data[5] * self.data[10]
+            + self.data[12] * self.data[6] * self.data[9];
+
+        ret.data[1] = -self.data[1] * self.data[10] * self.data[15]
+            + self.data[1] * self.data[11] * self.data[14]
+            + self.data[9] * self.data[2] * self.data[15]
+            - self.data[9] * self.data[3] * self.data[14]
+            - self.data[13] * self.data[2] * self.data[11]
+            + self.data[13] * self.data[3] * self.data[10];
+
+        ret.data[5] = self.data[0] * self.data[10] * self.data[15]
+            - self.data[0] * self.data[11] * self.data[14]
+            - self.data[8] * self.data[2] * self.data[15]
+            + self.data[8] * self.data[3] * self.data[14]
+            + self.data[12] * self.data[2] * self.data[11]
+            - self.data[12] * self.data[3] * self.data[10];
+
+        ret.data[9] = -self.data[0] * self.data[9] * self.data[15]
+            + self.data[0] * self.data[11] * self.data[13]
+            + self.data[8] * self.data[1] * self.data[15]
+            - self.data[8] * self.data[3] * self.data[13]
+            - self.data[12] * self.data[1] * self.data[11]
+            + self.data[12] * self.data[3] * self.data[9];
+
+        ret.data[13] = self.data[0] * self.data[9] * self.data[14]
+            - self.data[0] * self.data[10] * self.data[13]
+            - self.data[8] * self.data[1] * self.data[14]
+            + self.data[8] * self.data[2] * self.data[13]
+            + self.data[12] * self.data[1] * self.data[10]
+            - self.data[12] * self.data[2] * self.data[9];
+
+        ret.data[2] = self.data[1] * self.data[6] * self.data[15]
+            - self.data[1] * self.data[7] * self.data[14]
+            - self.data[5] * self.data[2] * self.data[15]
+            + self.data[5] * self.data[3] * self.data[14]
+            + self.data[13] * self.data[2] * self.data[7]
+            - self.data[13] * self.data[3] * self.data[6];
+
+        ret.data[6] = -self.data[0] * self.data[6] * self.data[15]
+            + self.data[0] * self.data[7] * self.data[14]
+            + self.data[4] * self.data[2] * self.data[15]
+            - self.data[4] * self.data[3] * self.data[14]
+            - self.data[12] * self.data[2] * self.data[7]
+            + self.data[12] * self.data[3] * self.data[6];
+
+        ret.data[10] = self.data[0] * self.data[5] * self.data[15]
+            - self.data[0] * self.data[7] * self.data[13]
+            - self.data[4] * self.data[1] * self.data[15]
+            + self.data[4] * self.data[3] * self.data[13]
+            + self.data[12] * self.data[1] * self.data[7]
+            - self.data[12] * self.data[3] * self.data[5];
+
+        ret.data[14] = -self.data[0] * self.data[5] * self.data[14]
+            + self.data[0] * self.data[6] * self.data[13]
+            + self.data[4] * self.data[1] * self.data[14]
+            - self.data[4] * self.data[2] * self.data[13]
+            - self.data[12] * self.data[1] * self.data[6]
+            + self.data[12] * self.data[2] * self.data[5];
+
+        ret.data[3] = -self.data[1] * self.data[6] * self.data[11]
+            + self.data[1] * self.data[7] * self.data[10]
+            + self.data[5] * self.data[2] * self.data[11]
+            - self.data[5] * self.data[3] * self.data[10]
+            - self.data[9] * self.data[2] * self.data[7]
+            + self.data[9] * self.data[3] * self.data[6];
+
+        ret.data[7] = self.data[0] * self.data[6] * self.data[11]
+            - self.data[0] * self.data[7] * self.data[10]
+            - self.data[4] * self.data[2] * self.data[11]
+            + self.data[4] * self.data[3] * self.data[10]
+            + self.data[8] * self.data[2] * self.data[7]
+            - self.data[8] * self.data[3] * self.data[6];
+
+        ret.data[11] = -self.data[0] * self.data[5] * self.data[11]
+            + self.data[0] * self.data[7] * self.data[9]
+            + self.data[4] * self.data[1] * self.data[11]
+            - self.data[4] * self.data[3] * self.data[9]
+            - self.data[8] * self.data[1] * self.data[7]
+            + self.data[8] * self.data[3] * self.data[5];
+
+        ret.data[15] = self.data[0] * self.data[5] * self.data[10]
+            - self.data[0] * self.data[6] * self.data[9]
+            - self.data[4] * self.data[1] * self.data[10]
+            + self.data[4] * self.data[2] * self.data[9]
+            + self.data[8] * self.data[1] * self.data[6]
+            - self.data[8] * self.data[2] * self.data[5];
+
+        let det = self.data[0] * ret.data[0]
+            + self.data[1] * ret.data[4]
+            + self.data[2] * ret.data[8]
+            + self.data[3] * ret.data[12];
+
+        if det == 0.0 {
+            return None;
+        }
+
+        let det = 1.0 / det;
+
+        for i in 0..16 {
+            ret.data[i] = ret.data[i] * det;
+        }
+
+        Some(ret)
+    }
+
+    pub fn transpose(self) -> Mat4 {
+        let mut ret = Mat4::identity();
+        for i in 0..4 {
+            for j in 0..4 {
+                ret.data[(i * 4) + j] = self.data[(j * 4) + i];
+            }
+        }
+        ret
     }
 }
 
@@ -174,6 +323,36 @@ impl ops::Mul<Vector3> for Mat4 {
             x: vec4_out[0] / vec4_out[3],
             y: vec4_out[1] / vec4_out[3],
             z: vec4_out[2] / vec4_out[3],
+        }
+    }
+}
+
+impl From<Mat4> for Mat3 {
+    fn from(item: Mat4) -> Mat3 {
+        let mut ret = Mat3::default();
+
+        for i in 0..3 {
+            for j in 0..3 {
+                ret.data[(i * 3) + j] = item.data[(i * 4) + j];
+            }
+        }
+        ret
+    }
+}
+
+impl ops::Mul<Vector3> for Mat3 {
+    type Output = Vector3;
+    fn mul(self, rhs: Vector3) -> Vector3 {
+        let rhs_data = [rhs.x, rhs.y, rhs.z];
+        let mut out = [0.0; 3];
+        // 3x3 * 3x1
+        for i in 0..3 {
+            out[i] = (0..3).map(|k| self.data[(k * 3) + i] * rhs_data[k]).sum();
+        }
+        Vector3 {
+            x: out[0],
+            y: out[1],
+            z: out[2],
         }
     }
 }
