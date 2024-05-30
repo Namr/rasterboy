@@ -11,6 +11,8 @@ pub struct Camera {
     pub projection_mat: Mat4,
 }
 
+// TODO: LookatCameraDefinition
+
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Light {
     pub position: Vector3,

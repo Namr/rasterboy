@@ -1,5 +1,3 @@
-use std::cmp::max;
-use std::cmp::min;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;

@@ -288,8 +288,6 @@ impl Vector3 {
     }
 }
 
-// TODO: the operator overloads here copy the entire mat, which seems super expensive
-// somehow it is not trivial to pass by reference in operator overloads
 impl ops::Mul for Mat4 {
     type Output = Mat4;
     fn mul(self, rhs: Mat4) -> Mat4 {
@@ -340,6 +338,8 @@ impl From<Mat4> for Mat3 {
     }
 }
 
+// TODO: probably worthwhile to add a Mat3 x Mat3 operator overload for completeness
+// but it is unlikely to ever be used
 impl ops::Mul<Vector3> for Mat3 {
     type Output = Vector3;
     fn mul(self, rhs: Vector3) -> Vector3 {
