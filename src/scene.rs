@@ -44,3 +44,121 @@ impl Camera {
         }
     }
 }
+
+// (note: amoussa) oh no, I wrote my own lexer and parser for XML...
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum XMLTokens {
+    OpenBracket,
+    CloseBracket,
+    OpenSlashBracket,
+    CloseSlashBracket,
+    Number(f64),
+    Name(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum RegexStates {
+    Ready,
+    StartBracket,
+    Slash,
+    InNumber,
+    InName,
+}
+
+// StartBracket either ends as < or </
+// Slash must match as />
+// Numbers accumulate until they run out of digits
+// Names accumulate until they run out of alphanumerics
+pub fn lex_scene_file(raw_text: &str) -> Option<Vec<XMLTokens>> {
+    lex_scene_file_recursively(raw_text, vec![], RegexStates::Ready, vec![])
+}
+
+fn lex_scene_file_recursively(
+    text: &str,
+    mut tokens: Vec<XMLTokens>,
+    mut state: RegexStates,
+    mut accumulator: Vec<char>,
+) -> Option<Vec<XMLTokens>> {
+    if text.is_empty() {
+        Some(tokens)
+    } else {
+        let c = text.chars().next()?;
+        let mut remaining_text = text;
+        match state {
+            RegexStates::Ready => {
+                if c == '<' {
+                    remaining_text = &text[1..];
+                    state = RegexStates::StartBracket;
+                } else if c == '/' {
+                    remaining_text = &text[1..];
+                    state = RegexStates::Slash;
+                } else if c == '>' {
+                    remaining_text = &text[1..];
+                    state = RegexStates::Ready;
+                    tokens.push(XMLTokens::CloseBracket);
+                } else if c.is_ascii_digit() {
+                    accumulator.push(c);
+                    remaining_text = &text[1..];
+                    state = RegexStates::InNumber;
+                } else if c.is_ascii_alphabetic() {
+                    accumulator.push(c);
+                    remaining_text = &text[1..];
+                    state = RegexStates::InName;
+                } else if c.is_whitespace() {
+                    // consume but no state update
+                    remaining_text = &text[1..];
+                } else {
+                    return None;
+                }
+            }
+            RegexStates::Slash => {
+                if c == '>' {
+                    remaining_text = &text[1..];
+                    state = RegexStates::Ready;
+                    tokens.push(XMLTokens::CloseSlashBracket);
+                } else if c.is_whitespace() {
+                    // consume but no state update
+                    remaining_text = &text[1..];
+                } else {
+                    return None;
+                }
+            }
+            RegexStates::StartBracket => {
+                state = RegexStates::Ready;
+                if c == '/' {
+                    remaining_text = &text[1..];
+                    tokens.push(XMLTokens::OpenSlashBracket);
+                } else {
+                    // we do not consume here
+                    tokens.push(XMLTokens::OpenBracket);
+                }
+            }
+            RegexStates::InName => {
+                if c.is_ascii_alphanumeric() {
+                    accumulator.push(c);
+                    remaining_text = &text[1..];
+                } else {
+                    tokens.push(XMLTokens::Name(accumulator.iter().collect()));
+                    accumulator.clear();
+                    // we do not consume the character here
+                    state = RegexStates::Ready;
+                }
+            }
+            RegexStates::InNumber => {
+                if c.is_ascii_digit() || c == '.' {
+                    accumulator.push(c);
+                    remaining_text = &text[1..];
+                } else {
+                    tokens.push(XMLTokens::Number(
+                        accumulator.iter().collect::<String>().parse().ok()?,
+                    ));
+                    accumulator.clear();
+                    // we do not consume the character here
+                    state = RegexStates::Ready;
+                }
+            }
+        }
+        lex_scene_file_recursively(remaining_text, tokens, state, accumulator)
+    }
+}
