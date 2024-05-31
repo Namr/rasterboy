@@ -53,8 +53,10 @@ pub enum XMLTokens {
     CloseBracket,
     OpenSlashBracket,
     CloseSlashBracket,
+    Equals,
     Number(f64),
     Name(String),
+    Quote(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -64,12 +66,14 @@ enum RegexStates {
     Slash,
     InNumber,
     InName,
+    InQuote,
 }
 
 // StartBracket either ends as < or </
 // Slash must match as />
 // Numbers accumulate until they run out of digits
 // Names accumulate until they run out of alphanumerics
+// Quotes accumulate until they hit another "
 pub fn lex_scene_file(raw_text: &str) -> Option<Vec<XMLTokens>> {
     lex_scene_file_recursively(raw_text, vec![], RegexStates::Ready, vec![])
 }
@@ -97,6 +101,13 @@ fn lex_scene_file_recursively(
                     remaining_text = &text[1..];
                     state = RegexStates::Ready;
                     tokens.push(XMLTokens::CloseBracket);
+                } else if c == '=' {
+                    remaining_text = &text[1..];
+                    state = RegexStates::Ready;
+                    tokens.push(XMLTokens::Equals);
+                } else if c == '"' {
+                    remaining_text = &text[1..];
+                    state = RegexStates::InQuote;
                 } else if c.is_ascii_digit() {
                     accumulator.push(c);
                     remaining_text = &text[1..];
@@ -156,6 +167,17 @@ fn lex_scene_file_recursively(
                     accumulator.clear();
                     // we do not consume the character here
                     state = RegexStates::Ready;
+                }
+            }
+            RegexStates::InQuote => {
+                if c == '"' {
+                    tokens.push(XMLTokens::Quote(accumulator.iter().collect()));
+                    accumulator.clear();
+                    state = RegexStates::Ready;
+                    remaining_text = &text[1..];
+                } else {
+                    accumulator.push(c);
+                    remaining_text = &text[1..];
                 }
             }
         }

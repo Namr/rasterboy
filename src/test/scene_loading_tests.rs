@@ -26,7 +26,7 @@ fn test_xml_lex_unnested() {
 
 #[test]
 fn test_xml_lex_nested() {
-    let example_tag = "<header/> <pog> <mynum> 1.567 </mynum></pog>";
+    let example_tag = "<header/> <pog class=\"humongus34\"> <mynum> 1.567 5 7.009 </mynum></pog>";
     let tokens = lex_scene_file(example_tag);
 
     let actual_tokens = vec![
@@ -35,11 +35,16 @@ fn test_xml_lex_nested() {
         XMLTokens::CloseSlashBracket,
         XMLTokens::OpenBracket,
         XMLTokens::Name("pog".to_string()),
+        XMLTokens::Name("class".to_string()),
+        XMLTokens::Equals,
+        XMLTokens::Quote("humongus34".to_string()),
         XMLTokens::CloseBracket,
         XMLTokens::OpenBracket,
         XMLTokens::Name("mynum".to_string()),
         XMLTokens::CloseBracket,
         XMLTokens::Number(1.567),
+        XMLTokens::Number(5.0),
+        XMLTokens::Number(7.009),
         XMLTokens::OpenSlashBracket,
         XMLTokens::Name("mynum".to_string()),
         XMLTokens::CloseBracket,
