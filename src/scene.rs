@@ -48,11 +48,11 @@ impl Camera {
 // (note: amoussa) oh no, I wrote my own lexer and parser for XML...
 
 #[derive(Debug, Clone, PartialEq, Default)]
-struct XMLNode {
-    name: String,
-    attributes: Vec<String>,
-    data: Option<f64>,
-    children: Vec<XMLNode>,
+pub struct XMLNode {
+    pub name: String,
+    pub attributes: Vec<String>,
+    pub data: Option<f64>,
+    pub children: Vec<XMLNode>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -77,8 +77,8 @@ enum RegexStates {
     InQuote,
 }
 
-struct TokenizedFile {
-    tokens: Vec<XMLToken>,
+pub struct TokenizedFile {
+    pub tokens: Vec<XMLToken>,
     current_index: usize,
 }
 
@@ -88,11 +88,11 @@ impl TokenizedFile {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.tokens.is_empty()
+        self.tokens.len() == self.current_index
     }
 
     pub fn peek(&self) -> Option<XMLToken> {
-        if self.current_index >= self.tokens.len() || self.current_index < 0 {
+        if self.current_index >= self.tokens.len() {
             None
         } else {
             Some(self.tokens[self.current_index].clone())
@@ -116,21 +116,26 @@ impl TokenizedFile {
 
 pub fn parse_scene_file(raw_text: &str) -> Option<XMLNode> {
     let mut tokenized_file = lex_scene_file(raw_text)?;
-    let node = XMLNode {
+    let mut node = XMLNode {
         name: "file".to_string(),
         attributes: vec![],
         data: None,
         children: vec![],
     };
-    parse_xml_node(&mut tokenized_file, node)
+
+    if let Some(_) = parse_xml_node(&mut tokenized_file, &mut node) {
+        return Some(node);
+    } else {
+        return None;
+    }
 }
 
 //  <tag> ::= <tag-start> <tag-content> <tag-end>
 //          | <tag-start-and-end>
-fn parse_xml_node(tokens: &mut TokenizedFile, mut node: XMLNode) -> Option<XMLNode> {
+fn parse_xml_node(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> {
     // base case
     if tokens.is_empty() {
-        return Some(node);
+        return Some(());
     }
 
     let start_checkpoint = tokens.save_checkpoint();
@@ -140,7 +145,7 @@ fn parse_xml_node(tokens: &mut TokenizedFile, mut node: XMLNode) -> Option<XMLNo
     let Some(_) = parse_tag_start(tokens, &mut child) else {
         // if its a single tag terminate early
         if let Some(_) = parse_tag_start_and_end(tokens, &mut child) {
-            return Some(node);
+            return Some(());
         } else {
             tokens.restore_checkpoint(start_checkpoint);
             return None;
@@ -224,14 +229,28 @@ fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<(
     if let Some(XMLToken::Number(num)) = tokens.peek() {
         node.children.push(XMLNode {
             name: String::default(),
-            data: Some(*num),
+            data: Some(num),
             children: Vec::default(),
             attributes: Vec::default(),
         });
         tokens.consume();
         return parse_tag_content(tokens, node);
     }
-    todo!();
+
+    if let Some(XMLToken::Name(name)) = tokens.peek() {
+        node.children.push(XMLNode {
+            name,
+            data: None,
+            children: Vec::default(),
+            attributes: Vec::default(),
+        });
+        tokens.consume();
+        return parse_tag_content(tokens, node);
+    }
+
+    // we let this try to parse a tag, but even if it fails we return Some(()) since the tag could
+    // be empty
+    parse_xml_node(tokens, node);
     Some(())
 }
 
