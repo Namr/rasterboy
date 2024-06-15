@@ -63,7 +63,7 @@ fn test_xml_parse_unnested() {
     let maybe_node = parse_scene_file(example_tag);
 
     // file node
-    assert!(maybe_node.is_some());
+    assert!(maybe_node.is_ok());
     let node = maybe_node.unwrap();
     assert_eq!(node.name, "file");
     assert!(node.attributes.is_empty());
@@ -78,4 +78,17 @@ fn test_xml_parse_unnested() {
     assert!(pog_node.attributes.is_empty());
     assert!(pog_node.data.is_none());
     assert!(pog_node.children.is_empty());
+}
+
+#[test]
+fn test_xml_parse_no_end_tag() {
+    let example_tag = "<pog>";
+    let maybe_node = parse_scene_file(example_tag);
+
+    let Err(parse_error) = maybe_node else {
+        assert!(false);
+        return;
+    };
+    assert_eq!(parse_error.node_name, "pog");
+    assert_eq!(parse_error.expression, "tag end");
 }

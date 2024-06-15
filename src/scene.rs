@@ -1,5 +1,8 @@
 use crate::math::*;
 use crate::mesh::*;
+use core::fmt;
+use std::error::Error;
+use std::fs;
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Camera {
@@ -27,6 +30,18 @@ pub struct Scene {
     pub lights: Vec<Light>,
 }
 
+impl Scene {
+    pub fn load_from_file(path: &str) -> Result<Scene, Box<dyn Error>> {
+        let file_content = fs::read_to_string(path)?;
+        parse_scene_file(&file_content)?;
+        Ok(Scene {
+            camera: Camera::new(1, 1, 1.0, 1.0, 1.0),
+            lights: vec![],
+            meshes: vec![],
+        })
+    }
+}
+
 impl Camera {
     pub fn new(canvas_width: i32, canvas_height: i32, fov: f32, near: f32, far: f32) -> Camera {
         Camera {
@@ -46,6 +61,23 @@ impl Camera {
 }
 
 // (note: amoussa) oh no, I wrote my own lexer and parser for XML...
+
+#[derive(Debug)]
+pub struct XMLParseError {
+    pub node_name: String,
+    pub expression: String,
+}
+impl Error for XMLParseError {}
+
+impl fmt::Display for XMLParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Failed parsing node {} at expression {}",
+            self.node_name, self.expression
+        )
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct XMLNode {
@@ -114,8 +146,11 @@ impl TokenizedFile {
     }
 }
 
-pub fn parse_scene_file(raw_text: &str) -> Option<XMLNode> {
-    let mut tokenized_file = lex_scene_file(raw_text)?;
+pub fn parse_scene_file(raw_text: &str) -> Result<XMLNode, XMLParseError> {
+    let mut tokenized_file = lex_scene_file(raw_text).ok_or(XMLParseError {
+        node_name: "tokenizer".to_string(),
+        expression: "tokenization".to_string(),
+    })?;
     let mut node = XMLNode {
         name: "file".to_string(),
         attributes: vec![],
@@ -123,43 +158,44 @@ pub fn parse_scene_file(raw_text: &str) -> Option<XMLNode> {
         children: vec![],
     };
 
-    if let Some(_) = parse_xml_node(&mut tokenized_file, &mut node) {
-        return Some(node);
-    } else {
-        return None;
+    match parse_xml_node(&mut tokenized_file, &mut node) {
+        Ok(_) => Ok(node),
+        Err(err) => Err(err),
     }
 }
 
 //  <tag> ::= <tag-start> <tag-content> <tag-end>
 //          | <tag-start-and-end>
-fn parse_xml_node(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> {
+fn parse_xml_node(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     // base case
     if tokens.is_empty() {
-        return Some(());
+        return Ok(());
     }
 
     let start_checkpoint = tokens.save_checkpoint();
 
     // parse a child tag
     let mut child: XMLNode = XMLNode::default();
-    let Some(_) = parse_tag_start(tokens, &mut child) else {
+
+    if let Err(_) = parse_tag_start(tokens, &mut child) {
         // if its a single tag terminate early
-        if let Some(_) = parse_tag_start_and_end(tokens, &mut child) {
-            return Some(());
-        } else {
+        if let Err(start_end_err) = parse_tag_start_and_end(tokens, &mut child) {
             tokens.restore_checkpoint(start_checkpoint);
-            return None;
+            return Err(start_end_err);
+        } else {
+            node.children.push(child);
+            return Ok(());
         }
     };
 
-    let Some(_) = parse_tag_content(tokens, &mut child) else {
+    if let Err(content_err) = parse_tag_content(tokens, &mut child) {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(content_err);
     };
 
-    let Some(_) = parse_tag_end(tokens, &mut child) else {
+    if let Err(end_err) = parse_tag_end(tokens, &mut child) {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(end_err);
     };
 
     node.children.push(child);
@@ -169,18 +205,22 @@ fn parse_xml_node(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> 
 }
 
 // <tag-start> ::= "<" <name> ">"
-fn parse_tag_start(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> {
+fn parse_tag_start(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     let start_checkpoint = tokens.save_checkpoint();
+    let err = XMLParseError {
+        node_name: "unknown".to_string(),
+        expression: "tag start".to_string(),
+    };
 
     let Some(XMLToken::OpenBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
     let Some(XMLToken::Name(tag_name)) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
@@ -189,26 +229,33 @@ fn parse_tag_start(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()>
 
     let Some(XMLToken::CloseBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
-    Some(())
+    Ok(())
 }
 
 // <tag-start-and-end> ::= "<" <name> "/>"
-fn parse_tag_start_and_end(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> {
+fn parse_tag_start_and_end(
+    tokens: &mut TokenizedFile,
+    node: &mut XMLNode,
+) -> Result<(), XMLParseError> {
     let start_checkpoint = tokens.save_checkpoint();
+    let err = XMLParseError {
+        node_name: "unknown".to_string(),
+        expression: "tag start and end".to_string(),
+    };
 
     let Some(XMLToken::OpenBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
     let Some(XMLToken::Name(tag_name)) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
@@ -217,15 +264,15 @@ fn parse_tag_start_and_end(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Op
 
     let Some(XMLToken::CloseSlashBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
-    Some(())
+    Ok(())
 }
 
 // <tag-content> = <number> <tag-content> | <name> <tag-content> | <tag> | ""
-fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> {
+fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     if let Some(XMLToken::Number(num)) = tokens.peek() {
         node.children.push(XMLNode {
             name: String::default(),
@@ -250,39 +297,43 @@ fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<(
 
     // we let this try to parse a tag, but even if it fails we return Some(()) since the tag could
     // be empty
-    parse_xml_node(tokens, node);
-    Some(())
+    let _ = parse_xml_node(tokens, node);
+    Ok(())
 }
 
 // <tag-end> ::= "</" <name> ">"
-fn parse_tag_end(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Option<()> {
+fn parse_tag_end(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     let start_checkpoint = tokens.save_checkpoint();
+    let err = XMLParseError {
+        node_name: node.name.clone(),
+        expression: "tag end".to_string(),
+    };
 
     let Some(XMLToken::OpenSlashBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
     let Some(XMLToken::Name(tag_name)) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
     // make sure start and end tag match
     if *tag_name != node.name {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     }
 
     let Some(XMLToken::CloseBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return None;
+        return Err(err);
     };
     tokens.consume();
 
-    Some(())
+    Ok(())
 }
 
 // StartBracket either ends as < or </
