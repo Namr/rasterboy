@@ -32,7 +32,7 @@ pub struct Scene {
 
 impl Scene {
     pub fn load_from_file(path: &str) -> Result<Scene, Box<dyn Error>> {
-        let file_content = fs::read_to_string(path)?;
+        let file_content = fs::read_to_string(path)?.replace("\n", "");
         parse_scene_file(&file_content)?;
         Ok(Scene {
             camera: Camera::new(1, 1, 1.0, 1.0, 1.0),
@@ -177,31 +177,34 @@ fn parse_xml_node(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), 
     // parse a child tag
     let mut child: XMLNode = XMLNode::default();
 
-    if let Err(_) = parse_tag_start(tokens, &mut child) {
+    if parse_tag_start(tokens, &mut child).is_err() {
         // if its a single tag terminate early
-        if let Err(start_end_err) = parse_tag_start_and_end(tokens, &mut child) {
-            tokens.restore_checkpoint(start_checkpoint);
-            return Err(start_end_err);
-        } else {
-            node.children.push(child);
-            return Ok(());
+        match parse_tag_start_and_end(tokens, &mut child) {
+            Err(start_end_err) => {
+                tokens.restore_checkpoint(start_checkpoint);
+                return Err(start_end_err);
+            }
+            Ok(_) => {
+                node.children.push(child);
+                return Ok(());
+            }
         }
-    };
+    }
 
     if let Err(content_err) = parse_tag_content(tokens, &mut child) {
         tokens.restore_checkpoint(start_checkpoint);
         return Err(content_err);
-    };
+    }
 
     if let Err(end_err) = parse_tag_end(tokens, &mut child) {
         tokens.restore_checkpoint(start_checkpoint);
         return Err(end_err);
-    };
+    }
 
     node.children.push(child);
 
     // recurse
-    parse_xml_node(tokens, node)
+    Ok(())
 }
 
 // <tag-start> ::= "<" <name> ">"
@@ -271,7 +274,7 @@ fn parse_tag_start_and_end(
     Ok(())
 }
 
-// <tag-content> = <number> <tag-content> | <name> <tag-content> | <tag> | ""
+// <tag-content> = <number> <tag-content> | <quote> <tag-content> | <tag> <tag-content> | ""
 fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     if let Some(XMLToken::Number(num)) = tokens.peek() {
         node.children.push(XMLNode {
@@ -284,7 +287,7 @@ fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(
         return parse_tag_content(tokens, node);
     }
 
-    if let Some(XMLToken::Name(name)) = tokens.peek() {
+    if let Some(XMLToken::Quote(name)) = tokens.peek() {
         node.children.push(XMLNode {
             name,
             data: None,
@@ -295,9 +298,12 @@ fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(
         return parse_tag_content(tokens, node);
     }
 
-    // we let this try to parse a tag, but even if it fails we return Some(()) since the tag could
-    // be empty
-    let _ = parse_xml_node(tokens, node);
+    if let Some(XMLToken::OpenBracket) = tokens.peek() {
+        let _ = parse_xml_node(tokens, node)?;
+        return parse_tag_content(tokens, node);
+    }
+
+    // empty content is ok
     Ok(())
 }
 

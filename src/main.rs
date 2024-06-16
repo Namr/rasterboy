@@ -52,6 +52,7 @@ fn main() {
     let lights = vec![light1, light2];
 
     let camera = Camera::new(IMAGE_WIDTH, IMAGE_HEIGHT, 54_f32.to_radians(), NEAR, FAR);
+    let _ = Scene::load_from_file("data/example.xml").expect("could not load scene file");
 
     ///////////////////////////////////////////////////
     // Create a PPM file to contain our image output //
@@ -66,16 +67,16 @@ fn main() {
 
     let ppm_header = format!("P3 {IMAGE_WIDTH} {IMAGE_HEIGHT}\n255\n");
 
-    match output_file.write_all(ppm_header.as_bytes()) {
-        Err(why) => panic!("Failed to write to output file {}: {}", display, why),
-        Ok(_) => (),
+    if let Err(why) = output_file.write_all(ppm_header.as_bytes()) {
+        panic!("Failed to write to output file {}: {}", display, why)
     }
 
     let mut pixel_buffer = vec![Color::default(); NUM_PIXELS];
     let mut depth_buffer = vec![f32::MAX; NUM_PIXELS];
 
     let model_mat = Mat4::euler_angles(0.0, 0.4, 0.0) * Mat4::translation(0.0, -3.0, -40.0);
-    let model_mat2 = Mat4::euler_angles(3.14, -0.4, 0.0) * Mat4::translation(0.0, 3.0, -40.0);
+    let model_mat2 =
+        Mat4::euler_angles(std::f32::consts::PI, -0.4, 0.0) * Mat4::translation(0.0, 3.0, -40.0);
 
     draw_mesh(
         &teapot,
@@ -98,15 +99,13 @@ fn main() {
     // Write framebuffer to image file //
     /////////////////////////////////////
     let mut output_str: String = String::default();
-    for i in 0..NUM_PIXELS {
-        output_str.push_str(&format!(
-            "{} {} {}\n",
-            pixel_buffer[i].r, pixel_buffer[i].g, pixel_buffer[i].b
-        ));
+    for pixel in pixel_buffer.iter() {
+        output_str.push_str(&format!("{} {} {}\n", pixel.r, pixel.g, pixel.b));
     }
-    match output_file.write_all(output_str.as_bytes()) {
-        Err(why) => panic!("Failed to write pixel to output file {}: {}", display, why),
-        Ok(_) => (),
+
+    // write to file and catch error
+    if let Err(why) = output_file.write_all(output_str.as_bytes()) {
+        panic!("Failed to write pixel to output file {}: {}", display, why);
     }
 }
 

@@ -30,6 +30,8 @@ pub struct Color {
     pub b: u8,
 }
 
+#[allow(clippy::identity_op)]
+#[allow(clippy::erasing_op)]
 impl Mat4 {
     pub fn identity() -> Mat4 {
         let mut ret = Mat4 { data: [0.0; 16] };
@@ -223,7 +225,7 @@ impl Mat4 {
         let det = 1.0 / det;
 
         for i in 0..16 {
-            ret.data[i] = ret.data[i] * det;
+            ret.data[i] *= det;
         }
 
         Some(ret)
@@ -306,6 +308,7 @@ impl ops::Mul for Mat4 {
 // (note: amoussa) this is a bit sketchy because we internally promote the vec3 into a vec4
 // since it makes sense in the context of geometric transformations.
 // Perhaps Mat4 and Vector3 should be Transformation and Point respectively
+#[allow(clippy::needless_range_loop)]
 impl ops::Mul<Vector3> for Mat4 {
     type Output = Vector3;
     fn mul(self, rhs: Vector3) -> Vector3 {
@@ -325,6 +328,7 @@ impl ops::Mul<Vector3> for Mat4 {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
 impl From<Mat4> for Mat3 {
     fn from(item: Mat4) -> Mat3 {
         let mut ret = Mat3::default();
@@ -340,6 +344,7 @@ impl From<Mat4> for Mat3 {
 
 // TODO: probably worthwhile to add a Mat3 x Mat3 operator overload for completeness
 // but it is unlikely to ever be used
+#[allow(clippy::needless_range_loop)]
 impl ops::Mul<Vector3> for Mat3 {
     type Output = Vector3;
     fn mul(self, rhs: Vector3) -> Vector3 {

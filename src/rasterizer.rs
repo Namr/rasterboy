@@ -59,15 +59,15 @@ pub fn draw_mesh(
             };
 
             let c0 = lights
-                .into_iter()
+                .iter()
                 .map(|&light| phong_lighting(light, world_to_v0, v0_normal))
                 .fold(Vector3::default(), |acc, color| acc + color);
             let c1 = lights
-                .into_iter()
+                .iter()
                 .map(|&light| phong_lighting(light, world_to_v1, v1_normal))
                 .fold(Vector3::default(), |acc, color| acc + color);
             let c2 = lights
-                .into_iter()
+                .iter()
                 .map(|&light| phong_lighting(light, world_to_v2, v2_normal))
                 .fold(Vector3::default(), |acc, color| acc + color);
 
