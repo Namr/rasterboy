@@ -158,8 +158,31 @@ fn test_xml_parse_no_end_tag() {
         assert!(false);
         return;
     };
-    assert_eq!(parse_error.node_name, "pog");
-    assert_eq!(parse_error.expression, "tag end");
+    assert!(!parse_error.error_msg.is_empty());
+}
+
+#[test]
+fn test_xml_parse_end_tag_wrong_name() {
+    let example_tag = "<pog> <dog/>";
+    let maybe_node = parse_scene_file(example_tag);
+
+    let Err(parse_error) = maybe_node else {
+        assert!(false);
+        return;
+    };
+    assert!(!parse_error.error_msg.is_empty());
+}
+
+#[test]
+fn test_xml_parse_nested_no_close() {
+    let example_tag = "<pog> <cool> <dool> <pog/>";
+    let maybe_node = parse_scene_file(example_tag);
+
+    let Err(parse_error) = maybe_node else {
+        assert!(false);
+        return;
+    };
+    assert!(!parse_error.error_msg.is_empty());
 }
 
 #[test]
@@ -182,6 +205,5 @@ fn test_xml_parse_has_garbage_input() {
     // file node
     assert!(maybe_node.is_err());
     let error = maybe_node.err().unwrap();
-    assert_eq!(error.node_name, "placeholder");
-    assert_eq!(error.expression, "tag end");
+    assert!(!error.error_msg.is_empty());
 }

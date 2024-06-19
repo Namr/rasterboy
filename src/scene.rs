@@ -1,8 +1,10 @@
 use crate::math::*;
 use crate::mesh::*;
+use crate::rasterizer::draw_mesh;
 use core::fmt;
 use std::error::Error;
 use std::fs;
+use std::path::Path;
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Camera {
@@ -24,22 +26,255 @@ pub struct Light {
 }
 
 #[derive(Debug, Default, Clone)]
+pub struct Model {
+    pub mesh: Mesh,
+    pub transform: Mat4,
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct Scene {
     pub camera: Camera,
-    pub meshes: Vec<Mesh>,
+    pub models: Vec<Model>,
     pub lights: Vec<Light>,
+}
+
+#[derive(Debug)]
+pub struct SceneLoadError {
+    pub msg: String,
+}
+impl Error for SceneLoadError {}
+
+impl fmt::Display for SceneLoadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Failed Scene Loading with error {}", self.msg,)
+    }
 }
 
 impl Scene {
     pub fn load_from_file(path: &str) -> Result<Scene, Box<dyn Error>> {
         let file_content = fs::read_to_string(path)?.replace("\n", "");
-        parse_scene_file(&file_content)?;
-        Ok(Scene {
-            camera: Camera::new(1, 1, 1.0, 1.0, 1.0),
+        let xml_node = parse_scene_file(&file_content)?;
+
+        // FIXME: this needs to be loaded from the file
+        const IMAGE_WIDTH: i32 = 1920;
+        const IMAGE_HEIGHT: i32 = 1080;
+        const NEAR: f32 = 0.1;
+        const FAR: f32 = 100.0;
+        let mut scene = Scene {
+            camera: Camera::new(IMAGE_WIDTH, IMAGE_HEIGHT, 54_f32.to_radians(), NEAR, FAR),
+            models: vec![],
             lights: vec![],
-            meshes: vec![],
-        })
+        };
+
+        if xml_node.name != "file" {
+            return Err(Box::new(SceneLoadError {
+                msg: "XML file was malformed".to_string(),
+            }));
+        }
+        if xml_node.children.len() != 1 {
+            return Err(Box::new(SceneLoadError {
+                msg: "No scene tag found".to_string(),
+            }));
+        }
+        let scene_node = &xml_node.children[0];
+
+        // look over scene node children for camera, lights, models
+        for child_node in scene_node.children.iter() {
+            match child_node.name.as_str() {
+                "model" => scene.models.push(model_from_xml_node(child_node)?),
+                "light" => scene.lights.push(light_from_xml_node(child_node)?),
+                name => {
+                    return Err(Box::new(SceneLoadError {
+                        msg: format!("Unknown tag {} found", name),
+                    }))
+                }
+            }
+        }
+        Ok(scene)
     }
+
+    pub fn render(self, pixel_buffer: &mut [Color], depth_buffer: &mut [f32]) {
+        for model in self.models.iter() {
+            draw_mesh(
+                &model.mesh,
+                model.transform,
+                &self.lights,
+                self.camera,
+                pixel_buffer,
+                depth_buffer,
+            );
+        }
+    }
+}
+
+fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
+    let mut model: Model = Default::default();
+    model.transform = Mat4::identity();
+    for model_property in model_node.children.iter() {
+        // TODO: enforce exactly one of each property
+        match model_property.name.as_str() {
+            "mesh" => {
+                if model_property.children.len() != 1 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "mesh tag did not specify a path".to_string(),
+                    }));
+                }
+                model.mesh = Mesh::from_obj_file(Path::new(&model_property.children[0].name))?;
+            }
+            "rotation" => {
+                if model_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "rotation tag did not specify three numbers (RPY)".to_string(),
+                    }));
+                }
+                let r = model_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "rotation tag contained something other than a number".to_string(),
+                    }))?;
+                let p = model_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "rotation tag contained something other than a number".to_string(),
+                    }))?;
+                let y = model_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "rotation tag contained something other than a number".to_string(),
+                    }))?;
+                model.transform = model.transform * Mat4::euler_angles(r, p, y);
+            }
+            "position" => {
+                if model_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "position tag did not specify three numbers (XYZ)".to_string(),
+                    }));
+                }
+                let x = model_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "position tag contained something other than a number".to_string(),
+                    }))?;
+                let y = model_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "position tag contained something other than a number".to_string(),
+                    }))?;
+                let z = model_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "position tag contained something other than a number".to_string(),
+                    }))?;
+                model.transform = model.transform * Mat4::translation(x, y, z);
+            }
+            name => {
+                return Err(Box::new(SceneLoadError {
+                    msg: format!("model had an unknown property {}", name),
+                }))
+            }
+        }
+    }
+
+    Ok(model)
+}
+
+fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
+    let mut light: Light = Default::default();
+
+    for light_property in light_node.children.iter() {
+        // TODO: enforce exactly one of each property
+        match light_property.name.as_str() {
+            "strength" => {
+                if light_property.children.len() != 1 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "strength tag did not specify a single number".to_string(),
+                    }));
+                }
+                light.ambient_strength =
+                    light_property.children[0]
+                        .data
+                        .ok_or(Box::new(SceneLoadError {
+                            msg: "strength tag contained something other than a number".to_string(),
+                        }))?;
+            }
+            "color" => {
+                if light_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "color tag did not specify three numbers (RGB)".to_string(),
+                    }));
+                }
+                let r = light_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "color tag contained something other than a number".to_string(),
+                    }))?;
+                let g = light_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "color tag contained something other than a number".to_string(),
+                    }))?;
+                let b = light_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "color tag contained something other than a number".to_string(),
+                    }))?;
+
+                if r > 255.0 || r < 0.0 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "red value in color tag was not between 0 and 255".to_string(),
+                    }));
+                }
+
+                if g > 255.0 || g < 0.0 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "green value in color tag was not between 0 and 255".to_string(),
+                    }));
+                }
+
+                if b > 255.0 || b < 0.0 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "blue value in color tag was not between 0 and 255".to_string(),
+                    }));
+                }
+
+                light.color.r = f32::floor(r) as u8;
+                light.color.g = f32::floor(g) as u8;
+                light.color.b = f32::floor(b) as u8;
+            }
+            "position" => {
+                if light_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "position tag did not specify three numbers (XYZ)".to_string(),
+                    }));
+                }
+                light.position.x =
+                    light_property.children[0]
+                        .data
+                        .ok_or(Box::new(SceneLoadError {
+                            msg: "position tag contained something other than a number".to_string(),
+                        }))?;
+                light.position.y =
+                    light_property.children[1]
+                        .data
+                        .ok_or(Box::new(SceneLoadError {
+                            msg: "position tag contained something other than a number".to_string(),
+                        }))?;
+                light.position.z =
+                    light_property.children[2]
+                        .data
+                        .ok_or(Box::new(SceneLoadError {
+                            msg: "position tag contained something other than a number".to_string(),
+                        }))?;
+            }
+            name => {
+                return Err(Box::new(SceneLoadError {
+                    msg: format!("light had an unknown property {}", name),
+                }))
+            }
+        }
+    }
+
+    Ok(light)
 }
 
 impl Camera {
@@ -64,18 +299,13 @@ impl Camera {
 
 #[derive(Debug)]
 pub struct XMLParseError {
-    pub node_name: String,
-    pub expression: String,
+    pub msg: String,
 }
 impl Error for XMLParseError {}
 
 impl fmt::Display for XMLParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Failed parsing node {} at expression {}",
-            self.node_name, self.expression
-        )
+        write!(f, "Failed XML Parsing with error {}", self.msg,)
     }
 }
 
@@ -83,7 +313,7 @@ impl fmt::Display for XMLParseError {
 pub struct XMLNode {
     pub name: String,
     pub attributes: Vec<String>,
-    pub data: Option<f64>,
+    pub data: Option<f32>,
     pub children: Vec<XMLNode>,
 }
 
@@ -94,7 +324,7 @@ pub enum XMLToken {
     OpenSlashBracket,
     CloseSlashBracket,
     Equals,
-    Number(f64),
+    Number(f32),
     Name(String),
     Quote(String),
 }
@@ -148,9 +378,9 @@ impl TokenizedFile {
 
 pub fn parse_scene_file(raw_text: &str) -> Result<XMLNode, XMLParseError> {
     let mut tokenized_file = lex_scene_file(raw_text).ok_or(XMLParseError {
-        node_name: "tokenizer".to_string(),
-        expression: "tokenization".to_string(),
+        msg: "unsupported character in file".to_string(),
     })?;
+
     let mut node = XMLNode {
         name: "file".to_string(),
         attributes: vec![],
@@ -210,20 +440,20 @@ fn parse_xml_node(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), 
 // <tag-start> ::= "<" <name> ">"
 fn parse_tag_start(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     let start_checkpoint = tokens.save_checkpoint();
-    let err = XMLParseError {
-        node_name: "unknown".to_string(),
-        expression: "tag start".to_string(),
-    };
 
     let Some(XMLToken::OpenBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "tag did not start with open bracket".to_string(),
+        });
     };
     tokens.consume();
 
     let Some(XMLToken::Name(tag_name)) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "tag does not contain a name inside brackets".to_string(),
+        });
     };
     tokens.consume();
 
@@ -232,7 +462,9 @@ fn parse_tag_start(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(),
 
     let Some(XMLToken::CloseBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: format!("{} tag did not end with a close bracket", tag_name),
+        });
     };
     tokens.consume();
 
@@ -245,20 +477,20 @@ fn parse_tag_start_and_end(
     node: &mut XMLNode,
 ) -> Result<(), XMLParseError> {
     let start_checkpoint = tokens.save_checkpoint();
-    let err = XMLParseError {
-        node_name: "unknown".to_string(),
-        expression: "tag start and end".to_string(),
-    };
 
     let Some(XMLToken::OpenBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "tag did not start with open bracket".to_string(),
+        });
     };
     tokens.consume();
 
     let Some(XMLToken::Name(tag_name)) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "tag does not contain a name inside brackets".to_string(),
+        });
     };
     tokens.consume();
 
@@ -267,7 +499,12 @@ fn parse_tag_start_and_end(
 
     let Some(XMLToken::CloseSlashBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: format!(
+                "{} tag did not end with a close (or close slash />) bracket",
+                tag_name
+            ),
+        });
     };
     tokens.consume();
 
@@ -310,32 +547,36 @@ fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(
 // <tag-end> ::= "</" <name> ">"
 fn parse_tag_end(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), XMLParseError> {
     let start_checkpoint = tokens.save_checkpoint();
-    let err = XMLParseError {
-        node_name: node.name.clone(),
-        expression: "tag end".to_string(),
-    };
 
     let Some(XMLToken::OpenSlashBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "closing tag does not contain a name inside brackets".to_string(),
+        });
     };
     tokens.consume();
 
     let Some(XMLToken::Name(tag_name)) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "closing tag does not contain a name inside brackets".to_string(),
+        });
     };
     tokens.consume();
 
     // make sure start and end tag match
     if *tag_name != node.name {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "closing tag name does not match opening tag name".to_string(),
+        });
     }
 
     let Some(XMLToken::CloseBracket) = tokens.peek() else {
         tokens.restore_checkpoint(start_checkpoint);
-        return Err(err);
+        return Err(XMLParseError {
+            msg: "tag did not end with a close bracket".to_string(),
+        });
     };
     tokens.consume();
 
@@ -389,7 +630,7 @@ fn lex_scene_file_recursively(
                 } else if c == '"' {
                     remaining_text = &text[1..];
                     state = RegexStates::InQuote;
-                } else if c.is_ascii_digit() {
+                } else if c.is_ascii_digit() || c == '-' {
                     accumulator.push(c);
                     remaining_text = &text[1..];
                     state = RegexStates::InNumber;

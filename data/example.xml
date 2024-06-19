@@ -1,6 +1,25 @@
 <scene>
-  <mesh/>
+  <model>
+    <mesh> "data/teapot.obj" </mesh>
+    <rotation> 0.0 0.4 0.0 </rotation>
+    <position> 0 -3 -40 </position>
+  </model>
+
+  <model>
+    <mesh> "data/teapot.obj" </mesh>
+    <rotation> 3.1415 -0.4 0.0 </rotation>
+    <position> 0 3 -40 </position>
+  </model>
+
   <light>
-    1 2 3
+    <strength> 0.3 </strength>
+    <position> 20.0 -10.0 0.0 </position>
+    <color> 200 200 200 </color>
+  </light>
+
+  <light>
+    <strength> 0.3 </strength>
+    <position> -20.0 0.0 2.0 </position>
+    <color> 50 0 0 </color>
   </light>
 </scene>
