@@ -70,7 +70,7 @@ fn test_for_childless_tag(maybe_node: Option<&XMLNode>, name: &str) {
     test_for_parent_tag(maybe_node, name, 0)
 }
 
-fn test_for_num(maybe_node: Option<&XMLNode>, number: f64) {
+fn test_for_num(maybe_node: Option<&XMLNode>, number: f32) {
     assert!(maybe_node.is_some());
     let node = maybe_node.unwrap();
     assert_eq!(node.name, String::default());
@@ -158,7 +158,7 @@ fn test_xml_parse_no_end_tag() {
         assert!(false);
         return;
     };
-    assert!(!parse_error.error_msg.is_empty());
+    assert!(!parse_error.msg.is_empty());
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn test_xml_parse_end_tag_wrong_name() {
         assert!(false);
         return;
     };
-    assert!(!parse_error.error_msg.is_empty());
+    assert!(!parse_error.msg.is_empty());
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn test_xml_parse_nested_no_close() {
         assert!(false);
         return;
     };
-    assert!(!parse_error.error_msg.is_empty());
+    assert!(!parse_error.msg.is_empty());
 }
 
 #[test]
@@ -205,5 +205,5 @@ fn test_xml_parse_has_garbage_input() {
     // file node
     assert!(maybe_node.is_err());
     let error = maybe_node.err().unwrap();
-    assert!(!error.error_msg.is_empty());
+    assert!(!error.msg.is_empty());
 }
