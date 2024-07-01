@@ -27,6 +27,36 @@ fn test_matrix_mul() {
 }
 
 #[test]
+fn test_euler_angles() {
+    let t = Mat4::euler_angles(0.0, 0.0, 90_f32.to_radians());
+    let p = Vector3 {
+        x: 1.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    let tp = t * p;
+
+    println!("{:?}", tp);
+    assert!((tp.x - 0.0).abs() < EPSILON);
+    assert!((tp.y + 1.0).abs() < EPSILON);
+    assert!((tp.z - 0.0).abs() < EPSILON);
+
+    let t = Mat4::euler_angles(0.0, 90_f32.to_radians(), 0.0);
+    let tp = t * p;
+
+    assert!((tp.x - 0.0).abs() < EPSILON);
+    assert!((tp.y - 0.0).abs() < EPSILON);
+    assert!((tp.z - 1.0).abs() < EPSILON);
+
+    let t = Mat4::euler_angles(90_f32.to_radians(), 0.0, 0.0);
+    let tp = t * p;
+
+    assert!((tp.x - 1.0).abs() < EPSILON);
+    assert!((tp.y - 0.0).abs() < EPSILON);
+    assert!((tp.z - 0.0).abs() < EPSILON);
+}
+
+#[test]
 fn test_point_transformations() {
     let t = Mat4::translation(1.0, 1.0, 1.0);
     let p = Vector3::ORIGIN;

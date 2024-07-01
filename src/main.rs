@@ -16,8 +16,6 @@ use scene::*;
 const IMAGE_WIDTH: i32 = 1920;
 const IMAGE_HEIGHT: i32 = 1080;
 const NUM_PIXELS: usize = (IMAGE_WIDTH * IMAGE_HEIGHT) as usize;
-const NEAR: f32 = 0.1;
-const FAR: f32 = 100.0;
 
 fn main() {
     ///////////////////////////////////////////////////

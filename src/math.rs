@@ -51,21 +51,21 @@ impl Mat4 {
 
     pub fn euler_angles(x: f32, y: f32, z: f32) -> Mat4 {
         let mut ret = Mat4::identity();
-        let c1 = x.cos();
-        let c2 = y.cos();
-        let c3 = z.cos();
-        let s1 = x.sin();
-        let s2 = y.sin();
-        let s3 = z.sin();
-        ret.data[0] = c1 * c3 - c2 * s1 * s3;
-        ret.data[1] = -c1 * s3 - c2 * c3 * s1;
-        ret.data[2] = s1 * s2;
-        ret.data[4] = c3 * s1 + c1 * c2 * s3;
-        ret.data[5] = c1 * c2 * c3 - s1 * s3;
-        ret.data[6] = -c1 * s2;
-        ret.data[8] = s2 * s3;
-        ret.data[9] = c3 * s2;
-        ret.data[10] = c2;
+        let cx = x.cos();
+        let cy = y.cos();
+        let cz = z.cos();
+        let sx = x.sin();
+        let sy = y.sin();
+        let sz = z.sin();
+        ret.data[0] = cy * cz;
+        ret.data[1] = sx * sy * cz - cx * sz;
+        ret.data[2] = sx * sz + cx * sy * cz;
+        ret.data[4] = cy * cz;
+        ret.data[5] = cx * cz + sx * sy * sz;
+        ret.data[6] = cx * sy * sz - sx * cz;
+        ret.data[8] = -sy;
+        ret.data[9] = sx * cy;
+        ret.data[10] = cx * cy;
 
         ret
     }
