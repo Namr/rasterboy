@@ -52,7 +52,7 @@ impl fmt::Display for SceneLoadError {
 
 impl Scene {
     pub fn load_from_file(path: &str) -> Result<Scene, Box<dyn Error>> {
-        let file_content = fs::read_to_string(path)?.replace("\n", "");
+        let file_content = fs::read_to_string(path)?.replace('\n', "");
         let xml_node = parse_scene_file(&file_content)?;
 
         // FIXME: this needs to be loaded from the file
@@ -109,7 +109,6 @@ impl Scene {
 
 fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
     let mut model: Model = Default::default();
-    model.transform = Mat4::identity();
     for model_property in model_node.children.iter() {
         // TODO: enforce exactly one of each property
         match model_property.name.as_str() {
@@ -310,15 +309,15 @@ impl fmt::Display for XMLParseError {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct XMLNode {
-    pub name: String,
-    pub attributes: Vec<String>,
-    pub data: Option<f32>,
-    pub children: Vec<XMLNode>,
+struct XMLNode {
+    name: String,
+    attributes: Vec<String>,
+    data: Option<f32>,
+    children: Vec<XMLNode>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum XMLToken {
+enum XMLToken {
     OpenBracket,
     CloseBracket,
     OpenSlashBracket,
@@ -339,21 +338,21 @@ enum RegexStates {
     InQuote,
 }
 
-pub struct TokenizedFile {
-    pub tokens: Vec<XMLToken>,
+struct TokenizedFile {
+    tokens: Vec<XMLToken>,
     current_index: usize,
 }
 
 impl TokenizedFile {
-    pub fn push(&mut self, token: XMLToken) {
+    fn push(&mut self, token: XMLToken) {
         self.tokens.push(token)
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.tokens.len() == self.current_index
     }
 
-    pub fn peek(&self) -> Option<XMLToken> {
+    fn peek(&self) -> Option<XMLToken> {
         if self.current_index >= self.tokens.len() {
             None
         } else {
@@ -361,22 +360,22 @@ impl TokenizedFile {
         }
     }
 
-    pub fn consume(&mut self) {
+    fn consume(&mut self) {
         self.current_index += 1
     }
 
     // these two just save and restore the current index such that if matching errors out, we can
     // go back to the pre-error token state
-    pub fn save_checkpoint(&self) -> usize {
+    fn save_checkpoint(&self) -> usize {
         self.current_index
     }
 
-    pub fn restore_checkpoint(&mut self, checkpoint: usize) {
+    fn restore_checkpoint(&mut self, checkpoint: usize) {
         self.current_index = checkpoint
     }
 }
 
-pub fn parse_scene_file(raw_text: &str) -> Result<XMLNode, XMLParseError> {
+fn parse_scene_file(raw_text: &str) -> Result<XMLNode, XMLParseError> {
     let mut tokenized_file = lex_scene_file(raw_text).ok_or(XMLParseError {
         msg: "unsupported character in file".to_string(),
     })?;
@@ -536,7 +535,7 @@ fn parse_tag_content(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(
     }
 
     if let Some(XMLToken::OpenBracket) = tokens.peek() {
-        let _ = parse_xml_node(tokens, node)?;
+        parse_xml_node(tokens, node)?;
         return parse_tag_content(tokens, node);
     }
 
@@ -588,7 +587,7 @@ fn parse_tag_end(tokens: &mut TokenizedFile, node: &mut XMLNode) -> Result<(), X
 // Numbers accumulate until they run out of digits
 // Names accumulate until they run out of alphanumerics
 // Quotes accumulate until they hit another "
-pub fn lex_scene_file(raw_text: &str) -> Option<TokenizedFile> {
+fn lex_scene_file(raw_text: &str) -> Option<TokenizedFile> {
     lex_scene_file_recursively(
         raw_text,
         TokenizedFile {
@@ -704,5 +703,219 @@ fn lex_scene_file_recursively(
             }
         }
         lex_scene_file_recursively(remaining_text, tokens, state, accumulator)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::scene::*;
+
+    #[test]
+    fn test_xml_lex_unnested() {
+        let example_tag = "<pog></pog>";
+        let tokens = lex_scene_file(example_tag);
+
+        let actual_tokens = vec![
+            XMLToken::OpenBracket,
+            XMLToken::Name("pog".to_string()),
+            XMLToken::CloseBracket,
+            XMLToken::OpenSlashBracket,
+            XMLToken::Name("pog".to_string()),
+            XMLToken::CloseBracket,
+        ];
+
+        assert!(tokens.is_some());
+        assert_eq!(tokens.unwrap().tokens, actual_tokens);
+
+        let example_tag_with_whitespace = "  <pog>  </pog>  ";
+        let tokens = lex_scene_file(example_tag_with_whitespace);
+
+        assert!(tokens.is_some());
+        assert_eq!(tokens.unwrap().tokens, actual_tokens);
+    }
+
+    #[test]
+    fn test_xml_lex_nested() {
+        let example_tag =
+            "<header/> <pog class=\"humongus34\"> <mynum> 1.567 5 7.009 </mynum></pog>";
+        let tokens = lex_scene_file(example_tag);
+
+        let actual_tokens = vec![
+            XMLToken::OpenBracket,
+            XMLToken::Name("header".to_string()),
+            XMLToken::CloseSlashBracket,
+            XMLToken::OpenBracket,
+            XMLToken::Name("pog".to_string()),
+            XMLToken::Name("class".to_string()),
+            XMLToken::Equals,
+            XMLToken::Quote("humongus34".to_string()),
+            XMLToken::CloseBracket,
+            XMLToken::OpenBracket,
+            XMLToken::Name("mynum".to_string()),
+            XMLToken::CloseBracket,
+            XMLToken::Number(1.567),
+            XMLToken::Number(5.0),
+            XMLToken::Number(7.009),
+            XMLToken::OpenSlashBracket,
+            XMLToken::Name("mynum".to_string()),
+            XMLToken::CloseBracket,
+            XMLToken::OpenSlashBracket,
+            XMLToken::Name("pog".to_string()),
+            XMLToken::CloseBracket,
+        ];
+
+        assert!(tokens.is_some());
+        assert_eq!(tokens.unwrap().tokens, actual_tokens);
+    }
+
+    fn test_for_parent_tag(maybe_node: Option<&XMLNode>, name: &str, num_children: usize) {
+        assert!(maybe_node.is_some());
+        let node = maybe_node.unwrap();
+        assert_eq!(node.name, name);
+        assert!(node.attributes.is_empty());
+        assert!(node.data.is_none());
+        assert_eq!(node.children.len(), num_children);
+    }
+
+    fn test_for_childless_tag(maybe_node: Option<&XMLNode>, name: &str) {
+        test_for_parent_tag(maybe_node, name, 0)
+    }
+
+    fn test_for_num(maybe_node: Option<&XMLNode>, number: f32) {
+        assert!(maybe_node.is_some());
+        let node = maybe_node.unwrap();
+        assert_eq!(node.name, String::default());
+        assert!(node.attributes.is_empty());
+        assert!(node.data.is_some());
+        assert_eq!(node.data.unwrap(), number);
+        assert!(node.children.is_empty());
+    }
+
+    fn test_for_name(maybe_node: Option<&XMLNode>, name: &str) {
+        assert!(maybe_node.is_some());
+        let node = maybe_node.unwrap();
+        assert_eq!(node.name, name);
+        assert!(node.attributes.is_empty());
+        assert!(node.data.is_none());
+        assert!(node.children.is_empty());
+    }
+
+    #[test]
+    fn test_xml_parse_unnested() {
+        let example_tag = "<pog></pog>";
+        let maybe_node = parse_scene_file(example_tag);
+
+        // file node
+        assert!(maybe_node.is_ok());
+        let node = maybe_node.unwrap();
+        assert_eq!(node.name, "file");
+        assert!(node.attributes.is_empty());
+        assert!(node.data.is_none());
+        assert_eq!(node.children.len(), 1);
+
+        // pog node
+        test_for_childless_tag(node.children.get(0), "pog");
+    }
+
+    #[test]
+    fn test_xml_parse_nested() {
+        let example_tag = "
+    <scene>
+      <mesh/>
+      <light>
+        1 2 3
+      </light>
+      <placeholder>
+      \"some_names\"
+      </placeholder>
+      8
+    </scene>";
+
+        let maybe_node = parse_scene_file(example_tag);
+
+        // file node
+        assert!(maybe_node.is_ok());
+        let node = maybe_node.unwrap();
+        assert_eq!(node.name, "file");
+        assert!(node.attributes.is_empty());
+        assert!(node.data.is_none());
+        assert_eq!(node.children.len(), 1);
+
+        let maybe_scene = node.children.get(0);
+        test_for_parent_tag(maybe_scene, "scene", 4);
+
+        test_for_childless_tag(maybe_scene.unwrap().children.get(0), "mesh");
+
+        let maybe_light = maybe_scene.unwrap().children.get(1);
+        test_for_parent_tag(maybe_light, "light", 3);
+
+        test_for_num(maybe_light.unwrap().children.get(0), 1.0);
+        test_for_num(maybe_light.unwrap().children.get(1), 2.0);
+        test_for_num(maybe_light.unwrap().children.get(2), 3.0);
+
+        let maybe_placeholder = maybe_scene.unwrap().children.get(2);
+        test_for_parent_tag(maybe_placeholder, "placeholder", 1);
+        test_for_name(maybe_placeholder.unwrap().children.get(0), "some_names");
+
+        test_for_num(maybe_scene.unwrap().children.get(3), 8.0);
+    }
+
+    #[test]
+    fn test_xml_parse_no_end_tag() {
+        let example_tag = "<pog>";
+        let maybe_node = parse_scene_file(example_tag);
+
+        let Err(parse_error) = maybe_node else {
+            assert!(false);
+            return;
+        };
+        assert!(!parse_error.msg.is_empty());
+    }
+
+    #[test]
+    fn test_xml_parse_end_tag_wrong_name() {
+        let example_tag = "<pog> <dog/>";
+        let maybe_node = parse_scene_file(example_tag);
+
+        let Err(parse_error) = maybe_node else {
+            assert!(false);
+            return;
+        };
+        assert!(!parse_error.msg.is_empty());
+    }
+
+    #[test]
+    fn test_xml_parse_nested_no_close() {
+        let example_tag = "<pog> <cool> <dool> <pog/>";
+        let maybe_node = parse_scene_file(example_tag);
+
+        let Err(parse_error) = maybe_node else {
+            assert!(false);
+            return;
+        };
+        assert!(!parse_error.msg.is_empty());
+    }
+
+    #[test]
+    fn test_xml_parse_has_garbage_input() {
+        let example_tag = "
+    <scene>
+      <mesh/>
+      <light>
+        1 2 3
+      </light>
+      <placeholder>
+      egjeoig
+      \"some_names\"
+      </placeholder>
+      8
+    </scene>";
+
+        let maybe_node = parse_scene_file(example_tag);
+
+        // file node
+        assert!(maybe_node.is_err());
+        let error = maybe_node.err().unwrap();
+        assert!(!error.msg.is_empty());
     }
 }
