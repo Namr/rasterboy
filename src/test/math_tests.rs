@@ -36,23 +36,22 @@ fn test_euler_angles() {
     };
     let tp = t * p;
 
-    println!("{:?}", tp);
     assert!((tp.x - 0.0).abs() < EPSILON);
-    assert!((tp.y + 1.0).abs() < EPSILON);
-    assert!((tp.z - 0.0).abs() < EPSILON);
+    assert!((tp.y - 0.0).abs() < EPSILON);
+    assert!((tp.z + 1.0).abs() < EPSILON);
 
     let t = Mat4::euler_angles(0.0, 90_f32.to_radians(), 0.0);
     let tp = t * p;
 
-    assert!((tp.x - 0.0).abs() < EPSILON);
+    assert!((tp.x - 1.0).abs() < EPSILON);
     assert!((tp.y - 0.0).abs() < EPSILON);
-    assert!((tp.z - 1.0).abs() < EPSILON);
+    assert!((tp.z - 0.0).abs() < EPSILON);
 
     let t = Mat4::euler_angles(90_f32.to_radians(), 0.0, 0.0);
     let tp = t * p;
 
-    assert!((tp.x - 1.0).abs() < EPSILON);
-    assert!((tp.y - 0.0).abs() < EPSILON);
+    assert!((tp.x - 0.0).abs() < EPSILON);
+    assert!((tp.y - 1.0).abs() < EPSILON);
     assert!((tp.z - 0.0).abs() < EPSILON);
 }
 
@@ -92,6 +91,7 @@ fn test_point_transformations() {
     };
     let tp = t * p;
 
+    println!("{:?}", tp);
     assert!(tp.x - 1.0 < EPSILON);
     assert!(tp.y - 2.0 < EPSILON);
     assert!(tp.z - 0.0 < EPSILON);

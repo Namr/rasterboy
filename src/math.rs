@@ -1,6 +1,6 @@
 use std::ops;
 
-#[derive(Debug, Default, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Mat4 {
     pub data: [f32; 16],
 }
@@ -49,24 +49,26 @@ impl Mat4 {
         ret
     }
 
-    pub fn euler_angles(x: f32, y: f32, z: f32) -> Mat4 {
+    pub fn euler_angles(roll: f32, pitch: f32, yaw: f32) -> Mat4 {
         let mut ret = Mat4::identity();
-        let cx = x.cos();
-        let cy = y.cos();
-        let cz = z.cos();
-        let sx = x.sin();
-        let sy = y.sin();
-        let sz = z.sin();
-        ret.data[0] = cy * cz;
-        ret.data[1] = sx * sy * cz - cx * sz;
-        ret.data[2] = sx * sz + cx * sy * cz;
-        ret.data[4] = cy * cz;
-        ret.data[5] = cx * cz + sx * sy * sz;
-        ret.data[6] = cx * sy * sz - sx * cz;
-        ret.data[8] = -sy;
-        ret.data[9] = sx * cy;
-        ret.data[10] = cx * cy;
+        let cb = roll.cos();
+        let cp = pitch.cos();
+        let ch = yaw.cos();
+        let sb = roll.sin();
+        let sp = pitch.sin();
+        let sh = yaw.sin();
 
+        ret.data[(0 * 4) + 0] = ch * cb + sh * sp * sb;
+        ret.data[(0 * 4) + 1] = sb * cp;
+        ret.data[(0 * 4) + 2] = -sh * cb + ch * sp * sb;
+
+        ret.data[(1 * 4) + 0] = -ch * sb + sh * sp * cb;
+        ret.data[(1 * 4) + 1] = cb * cp;
+        ret.data[(1 * 4) + 2] = sb * sh + ch * sp * cb;
+
+        ret.data[(2 * 4) + 0] = sh * cp;
+        ret.data[(2 * 4) + 1] = -sp;
+        ret.data[(2 * 4) + 2] = ch * cp;
         ret
     }
 
@@ -99,7 +101,7 @@ impl Mat4 {
 
     // (note: amoussa) this was uh "adapted" from GLU :)
     pub fn inverse(self) -> Option<Mat4> {
-        let mut ret = Mat4::default();
+        let mut ret = Mat4 { data: [0.0; 16] };
 
         ret.data[0] = self.data[5] * self.data[10] * self.data[15]
             - self.data[5] * self.data[11] * self.data[14]
@@ -239,6 +241,12 @@ impl Mat4 {
             }
         }
         ret
+    }
+}
+
+impl Default for Mat4 {
+    fn default() -> Mat4 {
+        Mat4::identity()
     }
 }
 

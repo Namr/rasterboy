@@ -1,14 +1,14 @@
 <scene>
   <model>
-    <mesh> "data/teapot.obj" </mesh>
-    <rotation> 0.0 0.4 0.0 </rotation>
-    <position> 0 -3 -40 </position>
+    <mesh> "data/bunny.obj" </mesh>
+    <rotation> 0.0 0.0 0.0 </rotation>
+    <position> 0 0.0 -2 </position>
   </model>
 
   <model>
-    <mesh> "data/teapot.obj" </mesh>
-    <rotation> 3.1415 -0.4 0.0 </rotation>
-    <position> 0 3 -40 </position>
+    <mesh> "data/bunny.obj" </mesh>
+    <rotation> 3.1415 0.0 0.0 </rotation>
+    <position> 0 -0.1 -2 </position>
   </model>
 
   <light>

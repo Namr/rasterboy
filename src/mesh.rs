@@ -1,4 +1,5 @@
 use crate::math::*;
+use core::fmt;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
@@ -17,6 +18,16 @@ pub struct Mesh {
     pub verticies: Vec<Vector3>,
     pub face_indicies: Vec<Triangle>,
     pub vertex_normals: Vec<Vector3>,
+}
+
+#[derive(Debug)]
+pub struct ParseObjError {}
+impl Error for ParseObjError {}
+
+impl fmt::Display for ParseObjError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Obj file did not match expected format")
+    }
 }
 
 impl Mesh {
@@ -44,9 +55,21 @@ impl Mesh {
                     ret.verticies.push(Vector3 { x, y, z });
                 }
                 "f" => {
-                    let a = split_line[1].parse::<usize>()?;
-                    let b = split_line[2].parse::<usize>()?;
-                    let c = split_line[3].parse::<usize>()?;
+                    let a = split_line[1]
+                        .split("//")
+                        .next()
+                        .ok_or(Box::new(ParseObjError {}))?
+                        .parse::<usize>()?;
+                    let b = split_line[2]
+                        .split("//")
+                        .next()
+                        .ok_or(Box::new(ParseObjError {}))?
+                        .parse::<usize>()?;
+                    let c = split_line[3]
+                        .split("//")
+                        .next()
+                        .ok_or(Box::new(ParseObjError {}))?
+                        .parse::<usize>()?;
                     ret.face_indicies.push(Triangle {
                         a: a - 1,
                         b: b - 1,
