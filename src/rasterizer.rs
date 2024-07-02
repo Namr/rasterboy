@@ -71,6 +71,10 @@ pub fn draw_mesh(
                 .map(|&light| phong_lighting(light, world_to_v2, v2_normal))
                 .fold(Vector3::default(), |acc, color| acc + color);
 
+            let c0 = c0 * (1.0 / ndc_v0.z);
+            let c1 = c1 * (1.0 / ndc_v1.z);
+            let c2 = c2 * (1.0 / ndc_v2.z);
+
             let area = triangle_edge(pixel_v2, pixel_v0, pixel_v1);
 
             // axis aligned bounding box of triangle (clipped to match screen)
@@ -116,7 +120,7 @@ pub fn draw_mesh(
                         // depth test
                         if depth < depth_buffer[buff_idx] {
                             depth_buffer[buff_idx] = depth;
-                            let color = (c0 * w0 + c1 * w1 + c2 * w2).to_color();
+                            let color = ((c0 * w0 + c1 * w1 + c2 * w2) * depth).to_color();
                             pixel_buffer[buff_idx] = color;
                         }
                     }
