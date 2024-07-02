@@ -16,8 +16,6 @@ pub struct Camera {
     pub projection_mat: Mat4,
 }
 
-// TODO: LookatCameraDefinition
-
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Light {
     pub position: Vector3,
@@ -54,17 +52,7 @@ impl Scene {
     pub fn load_from_file(path: &str) -> Result<Scene, Box<dyn Error>> {
         let file_content = fs::read_to_string(path)?.replace('\n', "");
         let xml_node = parse_scene_file(&file_content)?;
-
-        // FIXME: this needs to be loaded from the file
-        const IMAGE_WIDTH: i32 = 1920;
-        const IMAGE_HEIGHT: i32 = 1080;
-        const NEAR: f32 = 0.1;
-        const FAR: f32 = 100.0;
-        let mut scene = Scene {
-            camera: Camera::new(IMAGE_WIDTH, IMAGE_HEIGHT, 54_f32.to_radians(), NEAR, FAR),
-            models: vec![],
-            lights: vec![],
-        };
+        let mut scene = Scene::default();
 
         if xml_node.name != "file" {
             return Err(Box::new(SceneLoadError {
@@ -83,6 +71,7 @@ impl Scene {
             match child_node.name.as_str() {
                 "model" => scene.models.push(model_from_xml_node(child_node)?),
                 "light" => scene.lights.push(light_from_xml_node(child_node)?),
+                "camera" => scene.camera = camera_from_xml_node(child_node)?,
                 name => {
                     return Err(Box::new(SceneLoadError {
                         msg: format!("Unknown tag {} found", name),
@@ -274,6 +263,133 @@ fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
     }
 
     Ok(light)
+}
+
+fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>> {
+    let (mut canvas_width, mut canvas_height, mut fov, mut near, mut far): (
+        i32,
+        i32,
+        f32,
+        f32,
+        f32,
+    ) = Default::default();
+    let (mut look_at, mut up, mut position): (Vector3, Vector3, Vector3) = Default::default();
+
+    for camera_property in camera_node.children.iter() {
+        // TODO: enforce exactly one of each property
+        match camera_property.name.as_str() {
+            "projection" => {
+                if camera_property.children.len() != 5 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "projection tag did not specify: width, height, fov, near plane, far plane".to_string(),
+                    }));
+                }
+
+                canvas_width = camera_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "projection tag contained something other than a number".to_string(),
+                    }))? as i32;
+                canvas_height =
+                    camera_property.children[1]
+                        .data
+                        .ok_or(Box::new(SceneLoadError {
+                            msg: "projection tag contained something other than a number"
+                                .to_string(),
+                        }))? as i32;
+                fov = camera_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "projection tag contained something other than a number".to_string(),
+                    }))?;
+                near = camera_property.children[3]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "projection tag contained something other than a number".to_string(),
+                    }))?;
+                far = camera_property.children[4]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "projection tag contained something other than a number".to_string(),
+                    }))?;
+            }
+            "position" => {
+                if camera_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "position tag did not specify three numbers (XYZ)".to_string(),
+                    }));
+                }
+                position.x = camera_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "position tag contained something other than a number".to_string(),
+                    }))?;
+                position.y = camera_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "position tag contained something other than a number".to_string(),
+                    }))?;
+                position.z = camera_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "position tag contained something other than a number".to_string(),
+                    }))?;
+            }
+            "lookat" => {
+                if camera_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "lookat tag did not specify three numbers (XYZ)".to_string(),
+                    }));
+                }
+                look_at.x = camera_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "lookat tag contained something other than a number".to_string(),
+                    }))?;
+                look_at.y = camera_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "lookat tag contained something other than a number".to_string(),
+                    }))?;
+                look_at.z = camera_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "lookat tag contained something other than a number".to_string(),
+                    }))?;
+            }
+            "up" => {
+                if camera_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "up tag did not specify three numbers (XYZ)".to_string(),
+                    }));
+                }
+                up.x = camera_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "up tag contained something other than a number".to_string(),
+                    }))?;
+                up.y = camera_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "up tag contained something other than a number".to_string(),
+                    }))?;
+                up.z = camera_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "up tag contained something other than a number".to_string(),
+                    }))?;
+            }
+            name => {
+                return Err(Box::new(SceneLoadError {
+                    msg: format!("camera had an unknown property {}", name),
+                }))
+            }
+        }
+    }
+
+    let mut camera = Camera::new(canvas_width as i32, canvas_height as i32, fov, near, far);
+    camera.view_mat = Mat4::look_at(position, look_at, up);
+    Ok(camera)
 }
 
 impl Camera {

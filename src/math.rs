@@ -59,15 +59,15 @@ impl Mat4 {
         let sh = yaw.sin();
 
         ret.data[(0 * 4) + 0] = ch * cb + sh * sp * sb;
-        ret.data[(0 * 4) + 1] = sb * cp;
-        ret.data[(0 * 4) + 2] = -sh * cb + ch * sp * sb;
+        ret.data[(1 * 4) + 0] = sb * cp;
+        ret.data[(2 * 4) + 0] = -sh * cb + ch * sp * sb;
 
-        ret.data[(1 * 4) + 0] = -ch * sb + sh * sp * cb;
+        ret.data[(0 * 4) + 1] = -ch * sb + sh * sp * cb;
         ret.data[(1 * 4) + 1] = cb * cp;
-        ret.data[(1 * 4) + 2] = sb * sh + ch * sp * cb;
+        ret.data[(2 * 4) + 1] = sb * sh + ch * sp * cb;
 
-        ret.data[(2 * 4) + 0] = sh * cp;
-        ret.data[(2 * 4) + 1] = -sp;
+        ret.data[(0 * 4) + 2] = sh * cp;
+        ret.data[(1 * 4) + 2] = -sp;
         ret.data[(2 * 4) + 2] = ch * cp;
         ret
     }
@@ -242,6 +242,32 @@ impl Mat4 {
         }
         ret
     }
+
+    pub fn look_at(eye: Vector3, center: Vector3, up: Vector3) -> Mat4 {
+        let mut ret = Mat4::identity();
+
+        let f = (center - eye).normalized();
+        let s = Vector3::cross(f, up).normalized();
+        let u = Vector3::cross(s, f);
+
+        ret.data[(0 * 4) + 0] = s.x;
+        ret.data[(0 * 4) + 1] = s.y;
+        ret.data[(0 * 4) + 2] = s.z;
+
+        ret.data[(1 * 4) + 0] = u.x;
+        ret.data[(1 * 4) + 1] = u.y;
+        ret.data[(1 * 4) + 2] = u.z;
+
+        ret.data[(2 * 4) + 0] = -f.x;
+        ret.data[(2 * 4) + 1] = -f.y;
+        ret.data[(2 * 4) + 2] = -f.z;
+
+        ret.data[(0 * 4) + 3] = -Vector3::dot(s, eye);
+        ret.data[(1 * 4) + 3] = -Vector3::dot(u, eye);
+        ret.data[(2 * 4) + 3] = Vector3::dot(f, eye);
+
+        ret
+    }
 }
 
 impl Default for Mat4 {
@@ -278,10 +304,14 @@ impl Vector3 {
 
     pub fn normalized(self) -> Vector3 {
         let mag = self.magnitude();
-        Vector3 {
-            x: self.x / mag,
-            y: self.y / mag,
-            z: self.z / mag,
+        if mag.abs() <= f32::EPSILON {
+            Vector3::ORIGIN
+        } else {
+            Vector3 {
+                x: self.x / mag,
+                y: self.y / mag,
+                z: self.z / mag,
+            }
         }
     }
 

@@ -35,7 +35,7 @@ pub fn draw_mesh(
             Vector3::cross(world_to_v2 - world_to_v0, world_to_v1 - world_to_v0).normalized();
 
         // if any points are on screen, lets rasterize, we also perform back-face culling here
-        if Vector3::dot(world_to_v0, face_normal) <= 0.0
+        if true
             && (is_on_screen(ndc_v0, camera.near_plane, camera.far_plane)
                 || is_on_screen(ndc_v1, camera.near_plane, camera.far_plane)
                 || is_on_screen(ndc_v2, camera.near_plane, camera.far_plane))

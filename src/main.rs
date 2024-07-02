@@ -13,19 +13,19 @@ mod test;
 use math::*;
 use scene::*;
 
-const IMAGE_WIDTH: i32 = 1920;
-const IMAGE_HEIGHT: i32 = 1080;
-const NUM_PIXELS: usize = (IMAGE_WIDTH * IMAGE_HEIGHT) as usize;
-
 fn main() {
-    ///////////////////////////////////////////////////
-    // Load scene from disk
-    ///////////////////////////////////////////////////
+    ///////////////////////////
+    // Load scene from disk //
+    //////////////////////////
     let scene = Scene::load_from_file("data/example.xml").expect("could not load scene file");
 
     ///////////////////////////////////////////////////
     // Create a PPM file to contain our image output //
     //////////////////////////////////////////////////
+    let image_width = scene.camera.canvas_width as usize;
+    let image_height = scene.camera.canvas_height as usize;
+    let num_pixels = image_width * image_height;
+
     let path = Path::new("output.ppm");
     let display = path.display();
 
@@ -34,14 +34,14 @@ fn main() {
         Ok(file) => file,
     };
 
-    let ppm_header = format!("P3 {IMAGE_WIDTH} {IMAGE_HEIGHT}\n255\n");
+    let ppm_header = format!("P3 {image_width} {image_height}\n255\n");
 
     if let Err(why) = output_file.write_all(ppm_header.as_bytes()) {
         panic!("Failed to write to output file {}: {}", display, why)
     }
 
-    let mut pixel_buffer = vec![Color::default(); NUM_PIXELS];
-    let mut depth_buffer = vec![f32::MAX; NUM_PIXELS];
+    let mut pixel_buffer = vec![Color::default(); num_pixels as usize];
+    let mut depth_buffer = vec![f32::MAX; num_pixels as usize];
 
     scene.render(&mut pixel_buffer, &mut depth_buffer);
 
