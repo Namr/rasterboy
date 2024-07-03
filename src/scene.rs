@@ -98,10 +98,20 @@ impl Scene {
 
 fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
     let mut model: Model = Default::default();
+
+    let mut has_mesh = false;
+    let mut has_position = false;
+    let mut has_rotation = false;
+
     for model_property in model_node.children.iter() {
-        // TODO: enforce exactly one of each property
         match model_property.name.as_str() {
             "mesh" => {
+                if has_mesh {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "model tag has multiple mesh values".to_string(),
+                    }));
+                }
+                has_mesh = true;
                 if model_property.children.len() != 1 {
                     return Err(Box::new(SceneLoadError {
                         msg: "mesh tag did not specify a path".to_string(),
@@ -110,6 +120,12 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
                 model.mesh = Mesh::from_obj_file(Path::new(&model_property.children[0].name))?;
             }
             "rotation" => {
+                if has_rotation {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "model tag has multiple rotation values".to_string(),
+                    }));
+                }
+                has_rotation = true;
                 if model_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "rotation tag did not specify three numbers (RPY)".to_string(),
@@ -133,6 +149,12 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
                 model.transform = model.transform * Mat4::euler_angles(r, p, y);
             }
             "position" => {
+                if has_position {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "model tag has multiple position values".to_string(),
+                    }));
+                }
+                has_position = true;
                 if model_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "position tag did not specify three numbers (XYZ)".to_string(),
@@ -163,16 +185,39 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
         }
     }
 
+    if !has_mesh {
+        return Err(Box::new(SceneLoadError {
+            msg: "model tag did not contain a mesh value".to_string(),
+        }));
+    } else if !has_position {
+        return Err(Box::new(SceneLoadError {
+            msg: "model tag did not contain a position value".to_string(),
+        }));
+    } else if !has_rotation {
+        return Err(Box::new(SceneLoadError {
+            msg: "model tag did not contain a rotation value".to_string(),
+        }));
+    }
+
     Ok(model)
 }
 
 fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
     let mut light: Light = Default::default();
 
+    let mut has_strength = false;
+    let mut has_color = false;
+    let mut has_position = false;
+
     for light_property in light_node.children.iter() {
-        // TODO: enforce exactly one of each property
         match light_property.name.as_str() {
             "strength" => {
+                if has_strength {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "light tag has multiple strength values".to_string(),
+                    }));
+                }
+                has_strength = true;
                 if light_property.children.len() != 1 {
                     return Err(Box::new(SceneLoadError {
                         msg: "strength tag did not specify a single number".to_string(),
@@ -186,6 +231,12 @@ fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
                         }))?;
             }
             "color" => {
+                if has_color {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "light tag has multiple color values".to_string(),
+                    }));
+                }
+                has_color = true;
                 if light_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "color tag did not specify three numbers (RGB)".to_string(),
@@ -230,6 +281,12 @@ fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
                 light.color.b = f32::floor(b) as u8;
             }
             "position" => {
+                if has_position {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "light tag has multiple position values".to_string(),
+                    }));
+                }
+                has_position = true;
                 if light_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "position tag did not specify three numbers (XYZ)".to_string(),
@@ -262,6 +319,19 @@ fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
         }
     }
 
+    if !has_strength {
+        return Err(Box::new(SceneLoadError {
+            msg: "light tag did not contain a strength value".to_string(),
+        }));
+    } else if !has_color {
+        return Err(Box::new(SceneLoadError {
+            msg: "light tag did not contain a color value".to_string(),
+        }));
+    } else if !has_position {
+        return Err(Box::new(SceneLoadError {
+            msg: "light tag did not contain a position value".to_string(),
+        }));
+    }
     Ok(light)
 }
 
@@ -275,10 +345,20 @@ fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>>
     ) = Default::default();
     let (mut look_at, mut up, mut position): (Vector3, Vector3, Vector3) = Default::default();
 
+    let mut has_projection = false;
+    let mut has_position = false;
+    let mut has_lookat = false;
+    let mut has_up = false;
+
     for camera_property in camera_node.children.iter() {
-        // TODO: enforce exactly one of each property
         match camera_property.name.as_str() {
             "projection" => {
+                if has_projection {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "camera tag has multiple projection values".to_string(),
+                    }));
+                }
+                has_projection = true;
                 if camera_property.children.len() != 5 {
                     return Err(Box::new(SceneLoadError {
                         msg: "projection tag did not specify: width, height, fov, near plane, far plane".to_string(),
@@ -314,6 +394,12 @@ fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>>
                     }))?;
             }
             "position" => {
+                if has_position {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "camera tag has multiple position values".to_string(),
+                    }));
+                }
+                has_position = true;
                 if camera_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "position tag did not specify three numbers (XYZ)".to_string(),
@@ -336,6 +422,12 @@ fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>>
                     }))?;
             }
             "lookat" => {
+                if has_lookat {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "camera tag has multiple lookat values".to_string(),
+                    }));
+                }
+                has_lookat = true;
                 if camera_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "lookat tag did not specify three numbers (XYZ)".to_string(),
@@ -358,6 +450,12 @@ fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>>
                     }))?;
             }
             "up" => {
+                if has_up {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "camera tag has multiple up values".to_string(),
+                    }));
+                }
+                has_up = true;
                 if camera_property.children.len() != 3 {
                     return Err(Box::new(SceneLoadError {
                         msg: "up tag did not specify three numbers (XYZ)".to_string(),
@@ -385,6 +483,24 @@ fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>>
                 }))
             }
         }
+    }
+
+    if !has_projection {
+        return Err(Box::new(SceneLoadError {
+            msg: "camera tag did not contain a projection value".to_string(),
+        }));
+    } else if !has_position {
+        return Err(Box::new(SceneLoadError {
+            msg: "camera tag did not contain a position value".to_string(),
+        }));
+    } else if !has_lookat {
+        return Err(Box::new(SceneLoadError {
+            msg: "camera tag did not contain a lookat value".to_string(),
+        }));
+    } else if !has_up {
+        return Err(Box::new(SceneLoadError {
+            msg: "camera tag did not contain an up value".to_string(),
+        }));
     }
 
     let mut camera = Camera::new(canvas_width as i32, canvas_height as i32, fov, near, far);
@@ -1034,4 +1150,7 @@ mod test {
         let error = maybe_node.err().unwrap();
         assert!(!error.msg.is_empty());
     }
+
+    // TODO: test the full scene loading including edge cases like multi tags or not enough tags
+    // (will need to break out the file reading bit so you can pass in strings instead of files)
 }
