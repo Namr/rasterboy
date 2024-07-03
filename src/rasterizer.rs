@@ -23,22 +23,21 @@ pub fn draw_mesh(
         let world_to_v1 = transform * mesh.verticies[t.b];
         let world_to_v2 = transform * mesh.verticies[t.c];
 
-        let v0_normal = (inverse_transform * mesh.vertex_normals[t.a]).normalized();
-        let v1_normal = (inverse_transform * mesh.vertex_normals[t.b]).normalized();
-        let v2_normal = (inverse_transform * mesh.vertex_normals[t.c]).normalized();
+        let v0_normal = (inverse_transform * mesh.vertex_normals[t.a_normal]).normalized();
+        let v1_normal = (inverse_transform * mesh.vertex_normals[t.b_normal]).normalized();
+        let v2_normal = (inverse_transform * mesh.vertex_normals[t.c_normal]).normalized();
 
         let mut ndc_v0 = camera.projection_mat * camera.view_mat * world_to_v0;
         let mut ndc_v1 = camera.projection_mat * camera.view_mat * world_to_v1;
         let mut ndc_v2 = camera.projection_mat * camera.view_mat * world_to_v2;
 
-        let face_normal =
-            Vector3::cross(world_to_v2 - world_to_v0, world_to_v1 - world_to_v0).normalized();
+        // let face_normal = Vector3::cross(world_to_v2 - world_to_v0, world_to_v1 - world_to_v0).normalized();
 
-        // if any points are on screen, lets rasterize, we also perform back-face culling here
-        if true
-            && (is_on_screen(ndc_v0, camera.near_plane, camera.far_plane)
-                || is_on_screen(ndc_v1, camera.near_plane, camera.far_plane)
-                || is_on_screen(ndc_v2, camera.near_plane, camera.far_plane))
+        // if any points are on screen
+        // FIXME: I removed backface culling because it was broken, unsure why
+        if is_on_screen(ndc_v0, camera.near_plane, camera.far_plane)
+            || is_on_screen(ndc_v1, camera.near_plane, camera.far_plane)
+            || is_on_screen(ndc_v2, camera.near_plane, camera.far_plane)
         {
             // screen coords
             let pixel_v0 = ndc_v0.ndc_to_pixel(camera.canvas_width, camera.canvas_height);
