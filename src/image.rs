@@ -41,7 +41,7 @@ impl Image {
         let mut lines = reader.lines();
 
         // parse header, assert P3
-        if lines.nth(0).ok_or(Box::new(PPMLoadError {
+        if lines.next().ok_or(Box::new(PPMLoadError {
             msg: "PPM file did not contain header".to_string(),
         }))??
             != "P3"
@@ -52,11 +52,11 @@ impl Image {
         }
 
         // get width, height, max value from the header
-        let size_line: String = lines.nth(1).ok_or(Box::new(PPMLoadError {
+        let size_line: String = lines.next().ok_or(Box::new(PPMLoadError {
             msg: "PPM file did not contain header".to_string(),
         }))??;
         let split_size_line: Vec<&str> = size_line.trim().split_whitespace().collect();
-        let max_val_line: String = lines.nth(2).ok_or(Box::new(PPMLoadError {
+        let max_val_line: String = lines.next().ok_or(Box::new(PPMLoadError {
             msg: "PPM file did not contain header".to_string(),
         }))??;
         if split_size_line.len() != 2 {
@@ -116,5 +116,11 @@ impl Image {
         Ok(())
     }
 
-    // pub fn sample(&self, u: f32, v: f32) -> Color {}
+    pub fn sample(&self, u: f32, v: f32) -> Color {
+        let nearest_x = (u * self.width as f32) as usize;
+        let nearest_y = (v * self.height as f32) as usize;
+
+        // TODO: bilinear interpolation
+        self.data[(nearest_y * self.width) + nearest_x]
+    }
 }

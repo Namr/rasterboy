@@ -1,3 +1,4 @@
+use crate::image::*;
 use crate::math::*;
 use core::fmt;
 use std::collections::HashMap;
@@ -24,6 +25,8 @@ pub struct Mesh {
     pub verticies: Vec<Vector3>,
     pub face_indicies: Vec<Triangle>,
     pub vertex_normals: Vec<Vector3>,
+    pub vertex_texture_coords: Vec<Vector3>,
+    pub texture: Option<Image>,
 }
 
 #[derive(Debug)]
@@ -64,6 +67,13 @@ impl Mesh {
                     let z = split_line[3].parse::<f32>()?;
                     ret.vertex_normals.push(Vector3 { x, y, z }.normalized());
                 }
+                "vt" => {
+                    let x = split_line[1].parse::<f32>()?;
+                    let y = split_line[2].parse::<f32>()?;
+                    // FIXME make vector2
+                    ret.vertex_texture_coords
+                        .push(Vector3 { x, y, z: 0.0 }.normalized());
+                }
                 "f" => {
                     ret.face_indicies
                         .push(parse_face(&line).ok_or(ParseObjError {})?);
@@ -93,6 +103,14 @@ impl Mesh {
                             }
                         }
                     }
+                }
+                "mtllib" => {
+                    let prefix = match path.parent() {
+                        Some(pre) => pre,
+                        None => Path::new(""),
+                    };
+                    let mat_lib = prefix.join(split_line[1]);
+                    ret.texture = Some(load_texture_from_material_lib(&mat_lib)?);
                 }
                 _ => continue,
             }
@@ -252,6 +270,23 @@ fn parse_face(face_str: &str) -> Option<Triangle> {
         ret.c_normal = ret.c;
     }
     Some(ret)
+}
+
+fn load_texture_from_material_lib(mat_path: &Path) -> Result<Image, Box<dyn Error>> {
+    // load file
+    let file = File::open(mat_path)?;
+    let reader = BufReader::new(file);
+
+    for maybe_line in reader.lines() {
+        let line = maybe_line?;
+        let split_line: Vec<&str> = line.split_whitespace().collect();
+        if !split_line.is_empty() && split_line[0] == "map_Kd" {
+            let path = Path::new(split_line[1]);
+            return Ok(Image::load_ppm(&path)?);
+        }
+    }
+
+    return Err(Box::new(ParseObjError {}));
 }
 
 #[cfg(test)]
