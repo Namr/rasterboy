@@ -38,11 +38,11 @@ pub struct Color {
 #[allow(clippy::identity_op)]
 #[allow(clippy::erasing_op)]
 impl Mat4 {
-    pub fn at(&self, col: usize, row: usize) -> &f32{
+    pub fn at(&self, col: usize, row: usize) -> &f32 {
         return &self.data[(row * 4) + col];
     }
 
-    pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32{
+    pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32 {
         return &mut self.data[(row * 4) + col];
     }
 
@@ -70,7 +70,7 @@ impl Mat4 {
         let sb = roll.sin();
         let sp = pitch.sin();
         let sh = yaw.sin();
-        
+
         *ret.mut_at(0, 0) = ch * cb + sh * sp * sb;
         *ret.mut_at(0, 1) = sb * cp;
         *ret.mut_at(0, 2) = -sh * cb + ch * sp * sb;
@@ -264,7 +264,7 @@ impl Mat4 {
         let f = (center - eye).normalized();
         let s = Vector3::cross(f, up).normalized();
         let u = Vector3::cross(s, f);
-    
+
         *ret.mut_at(0, 0) = s.x;
         *ret.mut_at(1, 0) = s.y;
         *ret.mut_at(2, 0) = s.z;
@@ -292,11 +292,11 @@ impl Default for Mat4 {
 }
 
 impl Mat3 {
-    pub fn at(&self, col: usize, row: usize) -> &f32{
+    pub fn at(&self, col: usize, row: usize) -> &f32 {
         return &self.data[(row * 3) + col];
     }
 
-    pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32{
+    pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32 {
         return &mut self.data[(row * 3) + col];
     }
 }
