@@ -275,7 +275,7 @@ impl Mat4 {
 
         *ret.mut_at(0, 2) = -f.x;
         *ret.mut_at(1, 2) = -f.y;
-        *ret.mut_at(2, 2) = -f.z;
+        *ret.mut_at(2, 2) = f.z;
 
         *ret.mut_at(3, 0) = -Vector3::dot(s, eye);
         *ret.mut_at(3, 1) = -Vector3::dot(u, eye);
