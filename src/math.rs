@@ -1,3 +1,8 @@
+/*
+ * The following conventions are to be adhered to in this file:
+ * Matrices are stored in column-major order
+ * The coordinate system is right handed with +Y as up
+ */
 use std::ops;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -33,19 +38,27 @@ pub struct Color {
 #[allow(clippy::identity_op)]
 #[allow(clippy::erasing_op)]
 impl Mat4 {
+    pub fn at(&self, col: usize, row: usize) -> &f32{
+        return &self.data[(row * 4) + col];
+    }
+
+    pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32{
+        return &mut self.data[(row * 4) + col];
+    }
+
     pub fn identity() -> Mat4 {
         let mut ret = Mat4 { data: [0.0; 16] };
         for i in 0..4 {
-            ret.data[(i * 4) + i] = 1.0;
+            *ret.mut_at(i, i) = 1.0;
         }
         ret
     }
 
     pub fn translation(x: f32, y: f32, z: f32) -> Mat4 {
         let mut ret = Mat4::identity();
-        ret.data[(3 * 4) + 0] = x;
-        ret.data[(3 * 4) + 1] = y;
-        ret.data[(3 * 4) + 2] = z;
+        *ret.mut_at(3, 0) = x;
+        *ret.mut_at(3, 1) = y;
+        *ret.mut_at(3, 2) = z;
         ret
     }
 
@@ -57,45 +70,47 @@ impl Mat4 {
         let sb = roll.sin();
         let sp = pitch.sin();
         let sh = yaw.sin();
+        
+        *ret.mut_at(0, 0) = ch * cb + sh * sp * sb;
+        *ret.mut_at(0, 1) = sb * cp;
+        *ret.mut_at(0, 2) = -sh * cb + ch * sp * sb;
 
-        ret.data[(0 * 4) + 0] = ch * cb + sh * sp * sb;
-        ret.data[(1 * 4) + 0] = sb * cp;
-        ret.data[(2 * 4) + 0] = -sh * cb + ch * sp * sb;
+        *ret.mut_at(1, 0) = -ch * sb + sh * sp * cb;
+        *ret.mut_at(1, 1) = cb * cp;
+        *ret.mut_at(1, 2) = sb * sh + ch * sp * cb;
 
-        ret.data[(0 * 4) + 1] = -ch * sb + sh * sp * cb;
-        ret.data[(1 * 4) + 1] = cb * cp;
-        ret.data[(2 * 4) + 1] = sb * sh + ch * sp * cb;
-
-        ret.data[(0 * 4) + 2] = sh * cp;
-        ret.data[(1 * 4) + 2] = -sp;
-        ret.data[(2 * 4) + 2] = ch * cp;
+        *ret.mut_at(2, 0) = sh * cp;
+        *ret.mut_at(2, 1) = -sp;
+        *ret.mut_at(2, 2) = ch * cp;
         ret
     }
 
     pub fn scale(x: f32, y: f32, z: f32) -> Mat4 {
         let mut ret = Mat4 { data: [0.0; 16] };
-        ret.data[(0 * 4) + 0] = x;
-        ret.data[(1 * 4) + 1] = y;
-        ret.data[(2 * 4) + 2] = z;
-        ret.data[(3 * 4) + 3] = 1.0;
+        *ret.mut_at(0, 0) = x;
+        *ret.mut_at(1, 1) = y;
+        *ret.mut_at(2, 2) = z;
+        *ret.mut_at(3, 3) = 1.0;
         ret
     }
 
     pub fn perspective(aspect_ratio: f32, fov: f32, near_plane: f32, far_plane: f32) -> Mat4 {
         let mut ret = Mat4 { data: [0.0; 16] };
-        ret.data[0] = 1.0 / (aspect_ratio * (fov / 2.0).tan());
-        ret.data[(1 * 4) + 1] = 1.0 / (fov / 2.0).tan();
-        ret.data[(2 * 4) + 2] = -1.0 * (far_plane + near_plane) / (far_plane - near_plane);
-        ret.data[(2 * 4) + 3] = (-2.0 * far_plane * near_plane) / (far_plane - near_plane);
-        ret.data[(3 * 4) + 2] = -1.0;
+        let tangent = (fov / 2.0).tan();
+
+        *ret.mut_at(0, 0) = 1.0 / (aspect_ratio * tangent);
+        *ret.mut_at(1, 1) = 1.0 / tangent;
+        *ret.mut_at(2, 2) = -(near_plane + far_plane) / (far_plane - near_plane);
+        *ret.mut_at(2, 3) = -1.0;
+        *ret.mut_at(3, 2) = -(2.0 * far_plane * near_plane) / (far_plane - near_plane);
         ret
     }
 
     pub fn translation_part(self) -> Vector3 {
         Vector3 {
-            x: self.data[(3 * 4) + 0],
-            y: self.data[(3 * 4) + 1],
-            z: self.data[(3 * 4) + 2],
+            x: *self.at(3, 0),
+            y: *self.at(3, 1),
+            z: *self.at(3, 2),
         }
     }
 
@@ -237,7 +252,7 @@ impl Mat4 {
         let mut ret = Mat4::identity();
         for i in 0..4 {
             for j in 0..4 {
-                ret.data[(i * 4) + j] = self.data[(j * 4) + i];
+                *ret.mut_at(i, j) = *self.at(j, i);
             }
         }
         ret
@@ -249,22 +264,22 @@ impl Mat4 {
         let f = (center - eye).normalized();
         let s = Vector3::cross(f, up).normalized();
         let u = Vector3::cross(s, f);
+    
+        *ret.mut_at(0, 0) = s.x;
+        *ret.mut_at(1, 0) = s.y;
+        *ret.mut_at(2, 0) = s.z;
 
-        ret.data[(0 * 4) + 0] = s.x;
-        ret.data[(0 * 4) + 1] = s.y;
-        ret.data[(0 * 4) + 2] = s.z;
+        *ret.mut_at(0, 1) = u.x;
+        *ret.mut_at(1, 1) = u.y;
+        *ret.mut_at(2, 1) = u.z;
 
-        ret.data[(1 * 4) + 0] = u.x;
-        ret.data[(1 * 4) + 1] = u.y;
-        ret.data[(1 * 4) + 2] = u.z;
+        *ret.mut_at(0, 2) = -f.x;
+        *ret.mut_at(1, 2) = -f.y;
+        *ret.mut_at(2, 2) = -f.z;
 
-        ret.data[(2 * 4) + 0] = -f.x;
-        ret.data[(2 * 4) + 1] = -f.y;
-        ret.data[(2 * 4) + 2] = -f.z;
-
-        ret.data[(0 * 4) + 3] = -Vector3::dot(s, eye);
-        ret.data[(1 * 4) + 3] = -Vector3::dot(u, eye);
-        ret.data[(2 * 4) + 3] = Vector3::dot(f, eye);
+        *ret.mut_at(3, 0) = -Vector3::dot(s, eye);
+        *ret.mut_at(3, 1) = -Vector3::dot(u, eye);
+        *ret.mut_at(3, 2) = Vector3::dot(f, eye);
 
         ret
     }
@@ -273,6 +288,16 @@ impl Mat4 {
 impl Default for Mat4 {
     fn default() -> Mat4 {
         Mat4::identity()
+    }
+}
+
+impl Mat3 {
+    pub fn at(&self, col: usize, row: usize) -> &f32{
+        return &self.data[(row * 3) + col];
+    }
+
+    pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32{
+        return &mut self.data[(row * 3) + col];
     }
 }
 
@@ -331,12 +356,10 @@ impl Vector3 {
 impl ops::Mul for Mat4 {
     type Output = Mat4;
     fn mul(self, rhs: Mat4) -> Mat4 {
-        let mut c = Mat4::identity();
+        let mut c = Mat4 { data: [0.0; 16] };
         for i in 0..4 {
             for j in 0..4 {
-                c.data[(i * 4) + j] = (0..4)
-                    .map(|k| self.data[(i * 4) + k] * rhs.data[(k * 4) + j])
-                    .sum();
+                *c.mut_at(j, i) = (0..4).map(|k| *self.at(k, i) * *rhs.at(j, k)).sum();
             }
         }
         c
@@ -355,7 +378,7 @@ impl ops::Mul<Vector3> for Mat4 {
 
         // 4x4 * 4x1
         for i in 0..4 {
-            vec4_out[i] = (0..4).map(|k| self.data[(k * 4) + i] * vec4_rhs[k]).sum();
+            vec4_out[i] = (0..4).map(|k| *self.at(k, i) * vec4_rhs[k]).sum();
         }
 
         Vector3 {
@@ -373,7 +396,7 @@ impl From<Mat4> for Mat3 {
 
         for i in 0..3 {
             for j in 0..3 {
-                ret.data[(i * 3) + j] = item.data[(i * 4) + j];
+                *ret.mut_at(j, i) = *item.at(j, i);
             }
         }
         ret
@@ -390,7 +413,7 @@ impl ops::Mul<Vector3> for Mat3 {
         let mut out = [0.0; 3];
         // 3x3 * 3x1
         for i in 0..3 {
-            out[i] = (0..3).map(|k| self.data[(k * 3) + i] * rhs_data[k]).sum();
+            out[i] = (0..3).map(|k| *self.at(k, i) * rhs_data[k]).sum();
         }
         Vector3 {
             x: out[0],
@@ -434,18 +457,6 @@ impl ops::Mul<f32> for Vector3 {
 }
 
 impl Color {
-    pub const WHITE: Color = Color {
-        r: 255,
-        g: 255,
-        b: 255,
-    };
-
-    pub const RED: Color = Color { r: 255, g: 0, b: 0 };
-
-    pub const GREEN: Color = Color { r: 0, g: 255, b: 0 };
-
-    pub const BLUE: Color = Color { r: 0, g: 0, b: 255 };
-
     pub fn to_vector3(self) -> Vector3 {
         Vector3 {
             x: self.r as f32 / 255.0,
