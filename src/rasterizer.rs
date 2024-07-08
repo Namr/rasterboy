@@ -34,7 +34,8 @@ pub fn draw_mesh(
         // let face_normal = Vector3::cross(world_to_v2 - world_to_v0, world_to_v1 - world_to_v0).normalized();
 
         // if any points are on screen
-        // FIXME: I removed backface culling because it was broken, unsure why
+        // FIXME: I removed backface culling because it requires the view position, which is not
+        // easily accesible yet
         if is_on_screen(ndc_v0, camera.near_plane, camera.far_plane)
             || is_on_screen(ndc_v1, camera.near_plane, camera.far_plane)
             || is_on_screen(ndc_v2, camera.near_plane, camera.far_plane)
@@ -43,11 +44,6 @@ pub fn draw_mesh(
             let pixel_v0 = ndc_v0.ndc_to_pixel(camera.canvas_width, camera.canvas_height);
             let pixel_v1 = ndc_v1.ndc_to_pixel(camera.canvas_width, camera.canvas_height);
             let pixel_v2 = ndc_v2.ndc_to_pixel(camera.canvas_width, camera.canvas_height);
-
-            // pre-compute inverse depth before loop
-            ndc_v0.z = 1.0 / ndc_v0.z;
-            ndc_v1.z = 1.0 / ndc_v1.z;
-            ndc_v2.z = 1.0 / ndc_v2.z;
 
             // (note: amoussa) perhaps this could be passed as a function pointer to the draw call
             let phong_lighting = |light: Light, vertex: Vector3, normal: Vector3| -> Vector3 {
@@ -70,9 +66,14 @@ pub fn draw_mesh(
                 .map(|&light| phong_lighting(light, world_to_v2, v2_normal))
                 .fold(Vector3::default(), |acc, color| acc + color);
 
-            let c0 = c0 * (1.0 / ndc_v0.z);
-            let c1 = c1 * (1.0 / ndc_v1.z);
-            let c2 = c2 * (1.0 / ndc_v2.z);
+            // pre-compute inverse depth before loop
+            ndc_v0.z = 1.0 / ndc_v0.z;
+            ndc_v1.z = 1.0 / ndc_v1.z;
+            ndc_v2.z = 1.0 / ndc_v2.z;
+
+            let c0 = c0 * ndc_v0.z;
+            let c1 = c1 * ndc_v1.z;
+            let c2 = c2 * ndc_v2.z;
 
             let area = triangle_edge(pixel_v2, pixel_v0, pixel_v1);
 
@@ -114,7 +115,7 @@ pub fn draw_mesh(
 
                         // (note: amoussa) this is a very unintuitive formula I recommend reading about
                         // it here: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/visibility-problem-depth-buffer-depth-interpolation.html
-                        let depth = ndc_v0.z * w0 + ndc_v1.z * w1 + ndc_v2.z * w2;
+                        let depth = 1.0 / (ndc_v0.z * w0 + ndc_v1.z * w1 + ndc_v2.z * w2);
 
                         // depth test
                         if depth < depth_buffer[buff_idx] {
