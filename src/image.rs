@@ -74,17 +74,19 @@ impl Image {
         let mut data = vec![Color::default(); width * height];
 
         // for all lines read and push data, we enforce that lines are multiples of three numbers
-        for maybe_line in lines.skip(3) {
+        let mut idx: usize = 0;
+        for maybe_line in lines {
             let line = maybe_line?;
             let split_line: Vec<&str> = line.split_whitespace().collect();
             if split_line.len() % 3 != 0 {
                 return Err(Box::new(PPMLoadError{msg: "the number of values in the PPM file is not a multiple of three (cannot create colors)".to_string()}));
             }
 
-            for (i, color_str) in split_line.chunks(3).enumerate() {
-                data[i].r = ((color_str[0].parse::<f32>()? / max_value) * 255.0) as u8;
-                data[i].g = ((color_str[1].parse::<f32>()? / max_value) * 255.0) as u8;
-                data[i].b = ((color_str[2].parse::<f32>()? / max_value) * 255.0) as u8;
+            for color_str in split_line.chunks(3) {
+                data[idx].r = ((color_str[0].parse::<f32>()? / max_value) * 255.0) as u8;
+                data[idx].g = ((color_str[1].parse::<f32>()? / max_value) * 255.0) as u8;
+                data[idx].b = ((color_str[2].parse::<f32>()? / max_value) * 255.0) as u8;
+                idx += 1;
             }
         }
 
@@ -117,10 +119,12 @@ impl Image {
     }
 
     pub fn sample(&self, u: f32, v: f32) -> Color {
-        let nearest_x = (u * self.width as f32) as usize;
-        let nearest_y = (v * self.height as f32) as usize;
+        let max_x = self.width - 1;
+        let max_y = self.height - 1;
 
         // TODO: bilinear interpolation
+        let nearest_x = ((u * max_x as f32).round() as usize).clamp(0, max_x);
+        let nearest_y = (((1.0 - v) * max_y as f32).round() as usize).clamp(0, max_y);
         self.data[(nearest_y * self.width) + nearest_x]
     }
 }

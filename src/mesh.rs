@@ -71,8 +71,7 @@ impl Mesh {
                     let x = split_line[1].parse::<f32>()?;
                     let y = split_line[2].parse::<f32>()?;
                     // FIXME make vector2
-                    ret.vertex_texture_coords
-                        .push(Vector3 { x, y, z: 0.0 }.normalized());
+                    ret.vertex_texture_coords.push(Vector3 { x, y, z: 0.0 });
                 }
                 "f" => {
                     ret.face_indicies

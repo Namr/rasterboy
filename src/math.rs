@@ -273,12 +273,12 @@ impl Mat4 {
         *ret.mut_at(1, 1) = u.y;
         *ret.mut_at(2, 1) = u.z;
 
-        *ret.mut_at(0, 2) = -f.x;
-        *ret.mut_at(1, 2) = -f.y;
+        *ret.mut_at(0, 2) = f.x;
+        *ret.mut_at(1, 2) = f.y;
         *ret.mut_at(2, 2) = f.z;
 
-        *ret.mut_at(3, 0) = -Vector3::dot(s, eye);
-        *ret.mut_at(3, 1) = -Vector3::dot(u, eye);
+        *ret.mut_at(3, 0) = Vector3::dot(s, eye);
+        *ret.mut_at(3, 1) = Vector3::dot(u, eye);
         *ret.mut_at(3, 2) = Vector3::dot(f, eye);
 
         ret
@@ -363,6 +363,17 @@ impl ops::Mul for Mat4 {
             }
         }
         c
+    }
+}
+
+impl ops::Mul for Vector3 {
+    type Output = Vector3;
+    fn mul(self, rhs: Vector3) -> Vector3 {
+        Vector3 {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
+        }
     }
 }
 

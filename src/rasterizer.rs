@@ -120,8 +120,30 @@ pub fn draw_mesh(
                         // depth test
                         if depth < depth_buffer[buff_idx] {
                             depth_buffer[buff_idx] = depth;
-                            let color = ((c0 * w0 + c1 * w1 + c2 * w2) * depth).to_color();
-                            pixel_buffer[buff_idx] = color;
+                            let lighting_color = (c0 * w0 + c1 * w1 + c2 * w2) * depth;
+                            if mesh.texture.is_some() {
+                                let v0_texture_coordinate =
+                                    mesh.vertex_texture_coords[t.a_texture] * ndc_v0.z;
+                                let v1_texture_coordinate =
+                                    mesh.vertex_texture_coords[t.b_texture] * ndc_v1.z;
+                                let v2_texture_coordinate =
+                                    mesh.vertex_texture_coords[t.c_texture] * ndc_v2.z;
+
+                                let object_uv = (v0_texture_coordinate * w0
+                                    + v1_texture_coordinate * w1
+                                    + v2_texture_coordinate * w2)
+                                    * depth;
+                                let object_color = mesh
+                                    .texture
+                                    .as_ref()
+                                    .unwrap()
+                                    .sample(object_uv.x, object_uv.y)
+                                    .to_vector3();
+
+                                pixel_buffer[buff_idx] = (object_color * lighting_color).to_color();
+                            } else {
+                                pixel_buffer[buff_idx] = lighting_color.to_color();
+                            }
                         }
                     }
                 }
