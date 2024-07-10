@@ -137,7 +137,7 @@ pub fn draw_mesh(
                                     .texture
                                     .as_ref()
                                     .unwrap()
-                                    .sample(object_uv.x, object_uv.y)
+                                    .sample_bilinear(object_uv.x, object_uv.y)
                                     .to_vector3();
 
                                 pixel_buffer[buff_idx] = (object_color * lighting_color).to_color();

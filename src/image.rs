@@ -118,13 +118,46 @@ impl Image {
         Ok(())
     }
 
-    pub fn sample(&self, u: f32, v: f32) -> Color {
+    pub fn sample_bilinear(&self, u: f32, v: f32) -> Color {
         let max_x = self.width - 1;
         let max_y = self.height - 1;
+        let v = 1.0 - v;
 
-        // TODO: bilinear interpolation
+        let x_low_idx = ((u * max_x as f32).floor() as usize).clamp(0, max_x);
+        let x_high_idx = ((u * max_x as f32).ceil() as usize).clamp(0, max_x);
+        let y_low_idx = ((v * max_y as f32).floor() as usize).clamp(0, max_y);
+        let y_high_idx = ((v * max_y as f32).ceil() as usize).clamp(0, max_y);
+
+        // (note: amoussa) we need to add epsilon here to avoid a divide by zero in the case that
+        // one axis is not being interpolated
+        let x1 = (x_low_idx as f32 / max_x as f32) - f32::EPSILON;
+        let x2 = (x_high_idx as f32 / max_x as f32) + f32::EPSILON;
+        let y1 = (y_low_idx as f32 / max_y as f32) - f32::EPSILON;
+        let y2 = (y_high_idx as f32 / max_y as f32) + f32::EPSILON;
+
+        let q11 = self.data[(y_low_idx * self.width) + x_low_idx].to_vector3();
+        let q21 = self.data[(y_low_idx * self.width) + x_high_idx].to_vector3();
+        let q12 = self.data[(y_high_idx * self.width) + x_low_idx].to_vector3();
+        let q22 = self.data[(y_high_idx * self.width) + x_high_idx].to_vector3();
+
+        // (note: amoussa) these names are stupid
+        let range = (x2 - x1) * (y2 - y1);
+        let temp1 = (x2 - u) / range;
+        let temp2 = (u - x1) / range;
+        let temp3 = q11 * temp1 + q21 * temp2;
+        let temp4 = q12 * temp1 + q22 * temp2;
+
+        (temp3 * (y2 - v) + temp4 * (v - y1)).to_color()
+    }
+
+    #[allow(dead_code)]
+    pub fn sample_nearest_neighbor(&self, u: f32, v: f32) -> Color {
+        let max_x = self.width - 1;
+        let max_y = self.height - 1;
+        let v = 1.0 - v;
+
         let nearest_x = ((u * max_x as f32).round() as usize).clamp(0, max_x);
-        let nearest_y = (((1.0 - v) * max_y as f32).round() as usize).clamp(0, max_y);
+        let nearest_y = ((v * max_y as f32).round() as usize).clamp(0, max_y);
         self.data[(nearest_y * self.width) + nearest_x]
     }
 }

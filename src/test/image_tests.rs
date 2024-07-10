@@ -46,7 +46,7 @@ fn test_nearest_neighbor_sample() {
     };
 
     assert_eq!(
-        texture.sample(0.0, 0.0),
+        texture.sample_nearest_neighbor(0.0, 0.0),
         Color {
             r: 12,
             g: 12,
@@ -54,7 +54,7 @@ fn test_nearest_neighbor_sample() {
         }
     );
     assert_eq!(
-        texture.sample(0.01, 0.01),
+        texture.sample_nearest_neighbor(0.01, 0.01),
         Color {
             r: 12,
             g: 12,
@@ -62,21 +62,68 @@ fn test_nearest_neighbor_sample() {
         }
     );
     assert_eq!(
-        texture.sample(0.5, 0.5),
+        texture.sample_nearest_neighbor(0.5, 0.5),
         Color {
             r: 10,
             g: 10,
             b: 10
         }
     );
-    assert_eq!(texture.sample(0.8, 0.8), Color { r: 6, g: 6, b: 6 });
     assert_eq!(
-        texture.sample(1.0, 0.0),
+        texture.sample_nearest_neighbor(0.8, 0.8),
+        Color { r: 6, g: 6, b: 6 }
+    );
+    assert_eq!(
+        texture.sample_nearest_neighbor(1.0, 0.0),
         Color {
             r: 15,
             g: 15,
             b: 15
         }
     );
-    assert_eq!(texture.sample(0.0, 1.0), Color { r: 0, g: 0, b: 0 });
+    assert_eq!(
+        texture.sample_nearest_neighbor(0.0, 1.0),
+        Color { r: 0, g: 0, b: 0 }
+    );
+}
+
+#[test]
+fn test_bilinear_sample() {
+    let mut texture = Image::new(2, 2);
+    texture.data[0] = Color { r: 0, g: 0, b: 0 };
+    texture.data[1] = Color { r: 255, g: 0, b: 0 };
+    texture.data[2] = Color { r: 0, g: 255, b: 0 };
+    texture.data[3] = Color { r: 0, g: 0, b: 255 };
+
+    // no interpolation
+    assert_eq!(
+        texture.sample_bilinear(0.0, 0.0),
+        Color { r: 0, g: 255, b: 0 }
+    );
+    assert_eq!(
+        texture.sample_bilinear(0.0, 1.0),
+        Color { r: 0, g: 0, b: 0 }
+    );
+    assert_eq!(
+        texture.sample_bilinear(1.0, 1.0),
+        Color { r: 255, g: 0, b: 0 }
+    );
+    assert_eq!(
+        texture.sample_bilinear(1.0, 0.0),
+        Color { r: 0, g: 0, b: 255 }
+    );
+
+    // interpolation
+    assert_eq!(
+        texture.sample_bilinear(0.0, 0.3),
+        Color { r: 0, g: 178, b: 0 }
+    );
+    assert_eq!(
+        texture.sample_bilinear(0.3, 0.3),
+        Color {
+            r: 22,
+            g: 124,
+            b: 53
+        }
+    );
 }
