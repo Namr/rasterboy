@@ -101,6 +101,7 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
 
     let mut has_mesh = false;
     let mut has_position = false;
+    let mut has_scale = false;
     let mut has_rotation = false;
 
     for model_property in model_node.children.iter() {
@@ -177,6 +178,35 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
                     }))?;
                 model.transform = model.transform * Mat4::translation(x, y, z);
             }
+            "scale" => {
+                if has_scale {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "model tag has multiple scale values".to_string(),
+                    }));
+                }
+                has_scale = true;
+                if model_property.children.len() != 3 {
+                    return Err(Box::new(SceneLoadError {
+                        msg: "scale tag did not specify three numbers (XYZ)".to_string(),
+                    }));
+                }
+                let x = model_property.children[0]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "scale tag contained something other than a number".to_string(),
+                    }))?;
+                let y = model_property.children[1]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "scale tag contained something other than a number".to_string(),
+                    }))?;
+                let z = model_property.children[2]
+                    .data
+                    .ok_or(Box::new(SceneLoadError {
+                        msg: "scale tag contained something other than a number".to_string(),
+                    }))?;
+                model.transform = model.transform * Mat4::scale(x, y, z);
+            }
             name => {
                 return Err(Box::new(SceneLoadError {
                     msg: format!("model had an unknown property {}", name),
@@ -202,6 +232,7 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
     Ok(model)
 }
 
+#[allow(clippy::manual_range_contains)]
 fn light_from_xml_node(light_node: &XMLNode) -> Result<Light, Box<dyn Error>> {
     let mut light: Light = Default::default();
 
@@ -503,7 +534,7 @@ fn camera_from_xml_node(camera_node: &XMLNode) -> Result<Camera, Box<dyn Error>>
         }));
     }
 
-    let mut camera = Camera::new(canvas_width as i32, canvas_height as i32, fov, near, far);
+    let mut camera = Camera::new(canvas_width, canvas_height, fov, near, far);
     camera.view_mat = Mat4::look_at(position, look_at, up);
     Ok(camera)
 }

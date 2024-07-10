@@ -22,7 +22,7 @@ fn main() {
     let num_pixels = image_width * image_height;
     let output_path = Path::new("output.ppm");
     let mut output_image = Image::new(image_width, image_height);
-    let mut depth_buffer = vec![f32::MAX; num_pixels as usize];
+    let mut depth_buffer = vec![f32::MAX; num_pixels];
 
     // render
     scene.render(&mut output_image.data, &mut depth_buffer);

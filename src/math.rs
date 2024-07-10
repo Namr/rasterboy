@@ -39,11 +39,11 @@ pub struct Color {
 #[allow(clippy::erasing_op)]
 impl Mat4 {
     pub fn at(&self, col: usize, row: usize) -> &f32 {
-        return &self.data[(row * 4) + col];
+        &self.data[(row * 4) + col]
     }
 
     pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32 {
-        return &mut self.data[(row * 4) + col];
+        &mut self.data[(row * 4) + col]
     }
 
     pub fn identity() -> Mat4 {
@@ -106,6 +106,7 @@ impl Mat4 {
         ret
     }
 
+    #[allow(dead_code)]
     pub fn translation_part(self) -> Vector3 {
         Vector3 {
             x: *self.at(3, 0),
@@ -293,11 +294,11 @@ impl Default for Mat4 {
 
 impl Mat3 {
     pub fn at(&self, col: usize, row: usize) -> &f32 {
-        return &self.data[(row * 3) + col];
+        &self.data[(row * 3) + col]
     }
 
     pub fn mut_at(&mut self, col: usize, row: usize) -> &mut f32 {
-        return &mut self.data[(row * 3) + col];
+        &mut self.data[(row * 3) + col]
     }
 }
 

@@ -55,7 +55,7 @@ impl Image {
         let size_line: String = lines.next().ok_or(Box::new(PPMLoadError {
             msg: "PPM file did not contain header".to_string(),
         }))??;
-        let split_size_line: Vec<&str> = size_line.trim().split_whitespace().collect();
+        let split_size_line: Vec<&str> = size_line.split_whitespace().collect();
         let max_val_line: String = lines.next().ok_or(Box::new(PPMLoadError {
             msg: "PPM file did not contain header".to_string(),
         }))??;

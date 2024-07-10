@@ -77,7 +77,7 @@ impl Mesh {
                     ret.face_indicies
                         .push(parse_face(&line).ok_or(ParseObjError {})?);
                     let face_index = ret.face_indicies.len() - 1;
-                    let face_ref: &Triangle = &ret.face_indicies.last().unwrap();
+                    let face_ref: &Triangle = ret.face_indicies.last().unwrap();
 
                     // (note: amoussa) this is not great, but we say that if every
                     // single face has the same vertex index and normal index, then we should
@@ -87,8 +87,7 @@ impl Mesh {
                     let normals_and_vert_idxs_are_the_same = face_ref.a == face_ref.a_normal
                         && face_ref.b == face_ref.b_normal
                         && face_ref.c == face_ref.c_normal;
-                    should_compute_normals =
-                        should_compute_normals & normals_and_vert_idxs_are_the_same;
+                    should_compute_normals &= normals_and_vert_idxs_are_the_same;
 
                     if should_compute_normals {
                         // store for normal generation
@@ -230,7 +229,7 @@ fn parse_face(face_str: &str) -> Option<Triangle> {
                         tmp_num_str.parse::<usize>().ok()?,
                         num_type,
                     );
-                    seen_normals = seen_normals | (num_type == CurrentNumberType::Normal);
+                    seen_normals |= num_type == CurrentNumberType::Normal;
                     num_type = CurrentNumberType::Vert;
                     state = FaceParseState::Ready;
                     vert_idx += 1;
@@ -281,11 +280,11 @@ fn load_texture_from_material_lib(mat_path: &Path) -> Result<Image, Box<dyn Erro
         let split_line: Vec<&str> = line.split_whitespace().collect();
         if !split_line.is_empty() && split_line[0] == "map_Kd" {
             let path = Path::new(split_line[1]);
-            return Ok(Image::load_ppm(&path)?);
+            return Image::load_ppm(path);
         }
     }
 
-    return Err(Box::new(ParseObjError {}));
+    Err(Box::new(ParseObjError {}))
 }
 
 #[cfg(test)]
