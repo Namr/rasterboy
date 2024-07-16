@@ -49,7 +49,12 @@ impl fmt::Display for SceneLoadError {
 }
 
 impl Scene {
-    pub fn load_from_file(path: &str) -> Result<Scene, Box<dyn Error>> {
+    pub fn load_from_file(path_str: &str) -> Result<Scene, Box<dyn Error>> {
+        let path = Path::new(path_str);
+        let parent_dir = path.parent().ok_or(SceneLoadError {
+            msg: "Invalid scene path".to_string(),
+        })?;
+
         let file_content = fs::read_to_string(path)?.replace('\n', "");
         let xml_node = parse_scene_file(&file_content)?;
         let mut scene = Scene::default();
@@ -69,7 +74,9 @@ impl Scene {
         // look over scene node children for camera, lights, models
         for child_node in scene_node.children.iter() {
             match child_node.name.as_str() {
-                "model" => scene.models.push(model_from_xml_node(child_node)?),
+                "model" => scene
+                    .models
+                    .push(model_from_xml_node(child_node, parent_dir)?),
                 "light" => scene.lights.push(light_from_xml_node(child_node)?),
                 "camera" => scene.camera = camera_from_xml_node(child_node)?,
                 name => {
@@ -96,7 +103,7 @@ impl Scene {
     }
 }
 
-fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
+fn model_from_xml_node(model_node: &XMLNode, parent_path: &Path) -> Result<Model, Box<dyn Error>> {
     let mut model: Model = Default::default();
 
     let mut has_mesh = false;
@@ -118,7 +125,8 @@ fn model_from_xml_node(model_node: &XMLNode) -> Result<Model, Box<dyn Error>> {
                         msg: "mesh tag did not specify a path".to_string(),
                     }));
                 }
-                model.mesh = Mesh::from_obj_file(Path::new(&model_property.children[0].name))?;
+                let mesh_file_name = Path::new(&model_property.children[0].name);
+                model.mesh = Mesh::from_obj_file(&parent_path.join(mesh_file_name))?;
             }
             "rotation" => {
                 if has_rotation {
